@@ -1,6 +1,5 @@
 #include "Importer.h"
 
-
 Importer::Importer()
 {
 
@@ -79,6 +78,7 @@ void Importer::ImportPolygons(FbxMesh* inNode)
 		}
 	}
 }
+
 void Importer::ImportFile(string _filename)
 {
 	if (_filename[0] == '/0')
