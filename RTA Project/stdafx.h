@@ -14,11 +14,13 @@
 #include <string>
 #include <ctime>
 #include <algorithm>
+#include <DirectXMath.h>
 
-#define FBXSDK_SHARED
-#include "fbxsdk.h"
+
 
 #define _CRTDBG_MAP_ALLOC
 #include <crtdbg.h>
 
 using namespace std;
+//#pragma comment (lib, "d3d11.lib")
+
