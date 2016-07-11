@@ -1,19 +1,45 @@
 #include "stdafx.h"
 
-#define BACKBUFFER_WIDTH	500
-#define BACKBUFFER_HEIGHT	500
-
 class RTA_PROJECT
 {
 	HINSTANCE						application;
 	WNDPROC							appWndProc;
 	HWND							window;
 
-	ID3D11Device *device;
-	ID3D11DeviceContext *deviceContext;
-	ID3D11RenderTargetView *rtv;
-	IDXGISwapChain *swapchain;
+	CComPtr<ID3D11Device> device;
+	CComPtr<ID3D11DeviceContext> deviceContext;
+	CComPtr<ID3D11RenderTargetView> rtv;
+	CComPtr<IDXGISwapChain> swapchain;
 	D3D11_VIEWPORT viewport;
+
+	CComPtr<ID3D11Buffer> vertexBuffer, vertexBufferPlane, indexBuffer, indexBufferPlane, constantBufferObj, constantBufferScene;
+
+	/*CComPtr<ID3D11Buffer> vertexBufferPlane;
+	CComPtr<ID3D11Buffer> indexBuffer;
+	CComPtr<ID3D11Buffer> indexBufferPlane;
+	CComPtr<ID3D11Buffer> constantBufferObj;
+	CComPtr<ID3D11Buffer> constantBufferScene;*/
+
+	CComPtr<ID3D11InputLayout> input;
+
+	CComPtr<ID3D11VertexShader> vShader;
+
+	CComPtr<ID3D11PixelShader> pShader;
+
+	CComPtr<ID3D11DepthStencilView> dsView;
+
+	CComPtr<ID3D11Texture2D> depthStencil;
+
+	CComPtr<ID3D11ShaderResourceView> srv;
+
+	CComPtr<ID3D11RasterizerState> rasterstate;
+
+	OBJECT model, plane;
+
+	SCENE camera;
+
+	vector<OBJVERTEX> v_model, v_plane;
+	vector<UINT> v_modelCount, v_planeCount;
 
 public:
 

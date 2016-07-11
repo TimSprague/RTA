@@ -14,12 +14,19 @@
 #include <string>
 #include <ctime>
 #include <algorithm>
+#include <atlbase.h>
 #include <DirectXMath.h>
 #include <d3d11.h>
+#include "FBXExporter.h"
+#include "SharedDefines.h"
+#include "Importer.h"
+#include "Triangle.h"
+#include "defines.h"
 
 
 #define _CRTDBG_MAP_ALLOC
 #include <crtdbg.h>
+#include <stdlib.h>
 
 using namespace std;
 #pragma comment (lib, "d3d11.lib")

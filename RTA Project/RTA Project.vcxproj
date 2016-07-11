@@ -175,8 +175,10 @@
     <ClCompile Include="Triangle.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="defines.h" />
     <ClInclude Include="FBXExporter.h" />
     <ClInclude Include="Importer.h" />
+    <ClInclude Include="SharedDefines.h" />
     <ClInclude Include="stdafx.h" />
     <ClInclude Include="Triangle.h" />
   </ItemGroup>
