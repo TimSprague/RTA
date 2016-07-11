@@ -78,9 +78,39 @@ void Importer::ImportPolygons(FbxMesh* inNode)
 			vertexCounter++;
 		}
 	}
+}
+void Importer::ImportFile(string _filename)
+{
+	if (_filename[0] == '/0')
+	{
+		return;
+	}
+	// create a manager
+	FbxManager* manager = FbxManager::Create();
+	FbxIOSettings* inputOutput = FbxIOSettings::Create(manager,"objectPointerToName");
+	
+	manager->SetIOSettings(inputOutput);
+	// create importer and scene to access the information from the file
+	FbxImporter* importer = FbxImporter::Create(manager, "fbxImporter");
+	FbxScene* scene = FbxScene::Create(manager, "fbxScene");
 
-	// build the vector of meshes
-	meshes.push_back(*inNode);
+	// import the files scene
+	importer->Initialize(_filename.c_str,-1,manager->GetIOSettings());
+	importer->Import(scene,false); // document is the scene pointer
+	importer->Destroy(true);
+	
+	// get the number of children to loop for
+	int numChildren = scene->GetRootNode()->GetChildCount(false);
+
+	for (int i = 0; i < numChildren; i++)
+	{
+		if (scene->GetRootNode()->GetChild(i)->GetNodeAttribute()->GetAttributeType() == FbxNodeAttribute::eMesh)
+		{
+			ImportPolygons(scene->GetRootNode()->GetChild(i)->GetMesh());
+			break;
+		}
+	}
+	
 }
 
 

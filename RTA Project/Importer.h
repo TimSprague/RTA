@@ -25,12 +25,12 @@ public:
 
 	Importer();
 	void ImportPolygons(FbxMesh* inNode);
+	void ImportFile(string _filename);
 	~Importer();
 
 private:
 
 	vector<DirectX::XMFLOAT3> controlPoints;
-	vector<FbxMesh> meshes;
 	vector<Vertex> totalVertexes;
 	int polygonCount;
 };
