@@ -20,9 +20,9 @@ void Importer::ImportPolygons(FbxMesh* inNode)
 	// store control points
 	for (int i = 0; i < numControlPoints; i++)
 	{
-		controlPoints[i].x = inNode->GetControlPointAt(i).mData[0];
-		controlPoints[i].y = inNode->GetControlPointAt(i).mData[1];
-		controlPoints[i].z = inNode->GetControlPointAt(i).mData[2];
+		controlPoints[i].x = (float)inNode->GetControlPointAt(i).mData[0];
+		controlPoints[i].y = (float)inNode->GetControlPointAt(i).mData[1];
+		controlPoints[i].z = (float)inNode->GetControlPointAt(i).mData[2];
 	}
 
 	// number of polygons in this mesh
@@ -31,7 +31,7 @@ void Importer::ImportPolygons(FbxMesh* inNode)
 
 	int vertexCounter = 0;
 	// loop through the number of triangles (polygons)
-	for (unsigned int i = 0; i < polygonCount; ++i)
+	for (int i = 0; i < polygonCount; ++i)
 	{
 		// loop through the triangle vertices
 		for (unsigned int j = 0; j < 3; j++)
@@ -49,15 +49,15 @@ void Importer::ImportPolygons(FbxMesh* inNode)
 			{
 			case FbxLayerElement::eByControlPoint:
 			{
-				tempVerts.UV.x = tempUV->GetDirectArray().GetAt(controlPointIndex).mData[0];
-				tempVerts.UV.y = tempUV->GetDirectArray().GetAt(controlPointIndex).mData[1];
+				tempVerts.UV.x = (float)tempUV->GetDirectArray().GetAt(controlPointIndex).mData[0];
+				tempVerts.UV.y = (float)tempUV->GetDirectArray().GetAt(controlPointIndex).mData[1];
 			}
 			break;
 			case FbxLayerElement::eByPolygonVertex:
 			{
 				// get the information at the uv on the current uv on the texture of the polygon
-				tempVerts.UV.x = tempUV->GetDirectArray().GetAt(inNode->GetTextureUVIndex(i, j)).mData[0];
-				tempVerts.UV.y = tempUV->GetDirectArray().GetAt(inNode->GetTextureUVIndex(i, j)).mData[1];
+				tempVerts.UV.x = (float)tempUV->GetDirectArray().GetAt(inNode->GetTextureUVIndex(i, j)).mData[0];
+				tempVerts.UV.y = (float)tempUV->GetDirectArray().GetAt(inNode->GetTextureUVIndex(i, j)).mData[1];
 			}
 			break;
 			default:
@@ -67,9 +67,9 @@ void Importer::ImportPolygons(FbxMesh* inNode)
 			FbxVector4 tempNormal;
 			inNode->GetPolygonVertexNormal(i, j, tempNormal);
 			// map into tempVert.normal
-			tempVerts.normal.x = tempNormal.mData[0];
-			tempVerts.normal.y = tempNormal.mData[1];
-			tempVerts.normal.z = tempNormal.mData[2];
+			tempVerts.normal.x = (float)tempNormal.mData[0];
+			tempVerts.normal.y = (float)tempNormal.mData[1];
+			tempVerts.normal.z = (float)tempNormal.mData[2];
 
 			// replace the vertx with the tempVert
 			totalVertexes[vertexCounter] = tempVerts;
@@ -112,6 +112,55 @@ void Importer::ImportFile(string _filename)
 	}
 	
 }
+
+void Importer::FileSave(string _filename)
+{
+	ofstream bout;
+
+	bout.open(_filename.c_str(), ios_base::binary);
+
+	vector<Importer> fbxVectors;
+	Importer temp;
+
+	temp.controlPoints = controlPoints;
+	temp.polygonCount = polygonCount;
+	temp.totalVertexes = totalVertexes;
+	fbxVectors.push_back(temp);
+
+	int size = (int)fbxVectors.size();
+
+	if (bout.is_open())
+	{
+		bout.write((char *)&size, sizeof(int));
+		bout.write((char*)&fbxVectors[0], sizeof(Importer)*fbxVectors.size());
+
+		bout.close();
+	}
+	
+}
+
+void Importer::FileOpen(string _filename)
+{
+	ifstream bin;
+
+	vector<Importer> fbxVectors;
+	int size;
+	bin.open(_filename.c_str(), ios_base::binary);
+
+	if (bin.is_open())
+	{
+		bin.read((char*)&size, sizeof(int));
+		fbxVectors.resize(size);
+		bin.read((char*)&fbxVectors[0], size * sizeof(Importer));
+
+		bin.close();
+	}
+
+	controlPoints = fbxVectors[0].controlPoints;
+	polygonCount = fbxVectors[0].polygonCount;
+	totalVertexes = fbxVectors[0].totalVertexes;
+}
+
 
 
 Importer::~Importer()

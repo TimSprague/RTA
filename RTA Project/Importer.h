@@ -1,15 +1,16 @@
 #pragma once
 #include "stdafx.h"
+#include "Triangle.h"
 //#include "fbxsdk.h"
 #include <fbxsdk.h>
 #pragma comment (lib,"libfbxsdk-md.lib")
 #pragma comment (lib,"wininet.lib")
 
+
 class Importer
 {
 
 public:
-
 	struct Vertex
 	{
 		DirectX::XMFLOAT3 position;
@@ -29,6 +30,8 @@ public:
 	Importer();
 	void ImportPolygons(FbxMesh* inNode);
 	void ImportFile(std::string _filename);
+	void FileSave(string _filename);
+	void FileOpen(string _filename);
 	~Importer();
 
 private:
