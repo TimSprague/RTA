@@ -23,15 +23,21 @@ public:
 		float weight[4] = { 0,0,0,0 };
 	};
 
+	vector<DirectX::XMFLOAT3> controlPoints;
+	vector<Vertex> totalVertexes;
+	int polygonCount;
+
 	Importer();
 	void ImportPolygons(FbxMesh* inNode);
 	void ImportFile(string _filename);
+	void FileSave(string _filename);
+	void FileOpen(string _filename);
 	~Importer();
 
 private:
 
-	vector<DirectX::XMFLOAT3> controlPoints;
+	/*vector<DirectX::XMFLOAT3> controlPoints;
 	vector<Vertex> totalVertexes;
-	int polygonCount;
+	int polygonCount;*/
 };
 
