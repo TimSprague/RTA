@@ -25,7 +25,6 @@ void Importer::ImportPolygons(FbxMesh* inNode)
 		controlPoints[i].z = inNode->GetControlPointAt(i).mData[2];
 	}
 
-
 	// number of polygons in this mesh
 	polygonCount = inNode->GetPolygonCount();
 	totalVertexes.resize(polygonCount * 3);
@@ -75,6 +74,7 @@ void Importer::ImportPolygons(FbxMesh* inNode)
 			// replace the vertx with the tempVert
 			totalVertexes[vertexCounter] = tempVerts;
 			vertexCounter++;
+			
 		}
 	}
 }
@@ -95,7 +95,7 @@ void Importer::ImportFile(string _filename)
 	FbxScene* scene = FbxScene::Create(manager, "fbxScene");
 
 	// import the files scene
-	importer->Initialize(_filename.c_str,-1,manager->GetIOSettings());
+	importer->Initialize(_filename.c_str(),-1,manager->GetIOSettings());
 	importer->Import(scene,false); // document is the scene pointer
 	importer->Destroy(true);
 	

@@ -18,10 +18,12 @@
 #include <DirectXMath.h>
 #include <d3d11.h>
 #include "FBXExporter.h"
-#include "SharedDefines.h"
 #include "Importer.h"
-#include "Triangle.h"
 #include "defines.h"
+
+//Shaders
+#include "RTA_VS.csh"
+#include "RTA_PS.csh"
 
 
 #define _CRTDBG_MAP_ALLOC
@@ -30,4 +32,5 @@
 
 using namespace std;
 #pragma comment (lib, "d3d11.lib")
+
 

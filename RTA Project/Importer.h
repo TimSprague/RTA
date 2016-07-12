@@ -1,16 +1,15 @@
 #pragma once
 #include "stdafx.h"
-#include "Triangle.h"
 //#include "fbxsdk.h"
 #include <fbxsdk.h>
 #pragma comment (lib,"libfbxsdk-md.lib")
 #pragma comment (lib,"wininet.lib")
 
-
 class Importer
 {
 
 public:
+
 	struct Vertex
 	{
 		DirectX::XMFLOAT3 position;
@@ -23,15 +22,19 @@ public:
 		float weight[4] = { 0,0,0,0 };
 	};
 
+	vector<DirectX::XMFLOAT3> controlPoints;
+	vector<Vertex> totalVertexes;
+	int polygonCount;
+
 	Importer();
 	void ImportPolygons(FbxMesh* inNode);
-	void ImportFile(string _filename);
+	void ImportFile(std::string _filename);
 	~Importer();
 
 private:
 
-	vector<DirectX::XMFLOAT3> controlPoints;
+	/*vector<DirectX::XMFLOAT3> controlPoints;
 	vector<Vertex> totalVertexes;
-	int polygonCount;
+	int polygonCount;*/
 };
 

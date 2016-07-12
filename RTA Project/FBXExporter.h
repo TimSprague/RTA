@@ -1,6 +1,5 @@
 #pragma once
 #include "stdafx.h"
-#include "Triangle.h"
 //#include "fbxsdk.h"
 #include <fbxsdk.h>
 #pragma comment (lib,"libfbxsdk-md.lib")
