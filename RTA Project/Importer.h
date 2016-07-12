@@ -29,7 +29,7 @@ public:
 
 	Importer();
 	void ImportPolygons(FbxMesh* inNode);
-	void ImportFile(string _filename);
+	void ImportFile(std::string _filename);
 	void FileSave(string _filename);
 	void FileOpen(string _filename);
 	~Importer();
