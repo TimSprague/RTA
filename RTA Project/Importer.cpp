@@ -113,6 +113,45 @@ void Importer::ImportFile(string _filename)
 	
 }
 
+void Importer::FindUniqueIndices()
+{
+	int vertexSize = (int)totalVertexes.size();
+	Vertex temp;
+	for (int i = 0; i < vertexSize; i++)
+	{
+		for (int j = 0; j < vertexSize; j++)
+		{
+			if (i != j)
+			{
+				if (totalVertexes[i].position.x == totalVertexes[j].position.x 
+					&& totalVertexes[i].position.y == totalVertexes[j].position.y
+					&& totalVertexes[i].position.z == totalVertexes[j].position.z
+					&& totalVertexes[i].normal.x == totalVertexes[j].normal.x
+					&& totalVertexes[i].normal.y == totalVertexes[j].normal.y
+					&& totalVertexes[i].normal.z == totalVertexes[j].normal.z
+					&& totalVertexes[i].UV.x == totalVertexes[j].UV.x
+					&& totalVertexes[i].UV.y == totalVertexes[j].UV.y)
+				{
+					continue;
+				}
+				else
+				{
+					temp.position.y = totalVertexes[j].position.y;
+					temp.position.z = totalVertexes[j].position.z;
+					temp.normal.x = totalVertexes[j].normal.x;
+					temp.normal.y = totalVertexes[j].normal.y;
+					temp.normal.z = totalVertexes[j].normal.z;
+					temp.UV.x = totalVertexes[j].UV.x;
+					temp.UV.y = totalVertexes[j].UV.y;
+					uniqueVertices.push_back(temp);
+					uniqueIndicies.push_back(j);
+				}
+			}
+		}
+	}
+
+}
+
 void Importer::FileSave(string _filename)
 {
 	ofstream bout;
@@ -125,14 +164,16 @@ void Importer::FileSave(string _filename)
 	temp.controlPoints = controlPoints;
 	temp.polygonCount = polygonCount;
 	temp.totalVertexes = totalVertexes;
+	temp.uniqueIndicies = uniqueIndicies;
+	temp.uniqueVertices = uniqueVertices;
 	fbxVectors.push_back(temp);
 
-	int size = (int)fbxVectors.size();
+	int size1 = (int)fbxVectors.size();
 
 	if (bout.is_open())
 	{
-		bout.write((char *)&size, sizeof(int));
-		bout.write((char*)&fbxVectors[0], sizeof(Importer)*fbxVectors.size());
+		bout.write((char *)&size1, sizeof(int));
+		bout.write((char*)&fbxVectors[0], sizeof(Importer)*size1);
 
 		bout.close();
 	}
@@ -159,6 +200,8 @@ void Importer::FileOpen(string _filename)
 	controlPoints = fbxVectors[0].controlPoints;
 	polygonCount = fbxVectors[0].polygonCount;
 	totalVertexes = fbxVectors[0].totalVertexes;
+	uniqueIndicies = fbxVectors[0].uniqueIndicies;
+	uniqueVertices = fbxVectors[0].uniqueVertices;
 }
 
 

@@ -18,7 +18,6 @@
 #include <DirectXMath.h>
 #include <d3d11.h>
 #include "FBXExporter.h"
-#include "Importer.h"
 #include "defines.h"
 
 //Shaders
