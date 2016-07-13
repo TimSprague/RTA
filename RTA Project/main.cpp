@@ -33,7 +33,11 @@ class RTA_PROJECT
 
 	CComPtr<ID3D11ShaderResourceView> srv;
 
+	CComPtr<ID3D11SamplerState> sampler;
+
 	CComPtr<ID3D11RasterizerState> rasterstate;
+
+	CComPtr<ID3D11Resource> texture;
 
 	OBJECT model, plane;
 
@@ -209,6 +213,18 @@ RTA_PROJECT::RTA_PROJECT(HINSTANCE hinst, WNDPROC proc)
 	cbufferScene.StructureByteStride = sizeof(float);
 
 	device->CreateBuffer(&cbufferScene, NULL, &constantBufferScene.p);
+
+	D3D11_SAMPLER_DESC samplerDesc;
+	ZeroMemory(&sampler, sizeof(D3D11_SAMPLER_DESC));
+
+	samplerDesc.Filter = D3D11_FILTER_COMPARISON_MIN_MAG_MIP_POINT;
+	samplerDesc.AddressU = D3D11_TEXTURE_ADDRESS_WRAP;
+	samplerDesc.AddressV = D3D11_TEXTURE_ADDRESS_WRAP;
+	samplerDesc.AddressW = D3D11_TEXTURE_ADDRESS_WRAP;
+	samplerDesc.ComparisonFunc = D3D11_COMPARISON_GREATER;
+	samplerDesc.MaxLOD = D3D11_FLOAT32_MAX;
+
+	device->CreateSamplerState(&samplerDesc, &sampler.p);
 }
 
 bool RTA_PROJECT::Run()
