@@ -107,6 +107,7 @@ void Importer::ImportFile(string _filename)
 		if (scene->GetRootNode()->GetChild(i)->GetNodeAttribute()->GetAttributeType() == FbxNodeAttribute::eMesh)
 		{
 			ImportPolygons(scene->GetRootNode()->GetChild(i)->GetMesh());
+			FindUniqueIndices();
 			break;
 		}
 	}

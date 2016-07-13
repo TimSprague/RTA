@@ -17,7 +17,6 @@
 #include <atlbase.h>
 #include <DirectXMath.h>
 #include <d3d11.h>
-#include "FBXExporter.h"
 #include "defines.h"
 
 //Shaders
@@ -30,6 +29,6 @@
 #include <stdlib.h>
 
 using namespace std;
-#pragma comment (lib, "d3d11.lib")
+//#pragma comment (lib, "d3d11.lib")
 
 

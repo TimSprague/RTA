@@ -2,8 +2,8 @@
 #include "stdafx.h"
 //#include "fbxsdk.h"
 #include <fbxsdk.h>
-#pragma comment (lib,"libfbxsdk-md.lib")
-#pragma comment (lib,"wininet.lib")
+//#pragma comment (lib,"libfbxsdk-md.lib")
+//#pragma comment (lib,"wininet.lib")
 
 
 class Importer
