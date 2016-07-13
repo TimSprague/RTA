@@ -15,12 +15,6 @@ class RTA_PROJECT
 
 	CComPtr<ID3D11Buffer> vertexBuffer, vertexBufferPlane, indexBuffer, indexBufferPlane, constantBufferObj, constantBufferScene;
 
-	/*CComPtr<ID3D11Buffer> vertexBufferPlane;
-	CComPtr<ID3D11Buffer> indexBuffer;
-	CComPtr<ID3D11Buffer> indexBufferPlane;
-	CComPtr<ID3D11Buffer> constantBufferObj;
-	CComPtr<ID3D11Buffer> constantBufferScene;*/
-
 	CComPtr<ID3D11InputLayout> input;
 
 	CComPtr<ID3D11VertexShader> vShader;
@@ -48,19 +42,6 @@ class RTA_PROJECT
 	vector<OBJVERTEX> v_model, v_plane;
 	vector<UINT> v_modelCount, v_planeCount;
 
-	float aspectRatio = (float)(BACKBUFFER_WIDTH) / (BACKBUFFER_HEIGHT);
-	float zNear = 0.1f;
-	float zFar = 100.0f;
-	float zBuffer[PIXELS];
-	UINT Raster[PIXELS];
-
-	float Degrees_to_Radian(float Deg)
-	{
-		return Deg * PI / 180.0f;
-	}
-
-	float clearColor[4] = { 0.0f, 0.0f, 1.0f, 1.0f };
-
 public:
 
 	RTA_PROJECT(HINSTANCE hinst, WNDPROC proc);
@@ -68,6 +49,19 @@ public:
 	bool ShutDown();
 	
 };
+
+float aspectRatio = (float)(BACKBUFFER_WIDTH) / (BACKBUFFER_HEIGHT);
+float zNear = 0.1f;
+float zFar = 100.0f;
+float zBuffer[PIXELS];
+UINT Raster[PIXELS];
+
+float Degrees_to_Radian(float Deg)
+{
+	return Deg * PI / 180.0f;
+}
+
+float clearColor[4] = { 0.0f, 0.0f, 1.0f, 1.0f };
 
 RTA_PROJECT::RTA_PROJECT(HINSTANCE hinst, WNDPROC proc)
 {
@@ -130,6 +124,7 @@ RTA_PROJECT::RTA_PROJECT(HINSTANCE hinst, WNDPROC proc)
 	viewport.MinDepth = 0;
 	viewport.MaxDepth = 1;
 
+#pragma region Vertex buffers
 	// Vertex buffer
 	D3D11_BUFFER_DESC model_vbuffer;
 	ZeroMemory(&model_vbuffer, sizeof(D3D11_BUFFER_DESC));
@@ -143,12 +138,14 @@ RTA_PROJECT::RTA_PROJECT(HINSTANCE hinst, WNDPROC proc)
 	data_1.pSysMem = import.totalVertexes.data();
 
 	device->CreateBuffer(&model_vbuffer, &data_1, &vertexBuffer.p);
+#pragma endregion
 
+#pragma region Index buffers
 	// Index buffer
 	D3D11_BUFFER_DESC model_ibuffer;
 	ZeroMemory(&model_ibuffer, sizeof(D3D11_BUFFER_DESC));
 	model_ibuffer.Usage = D3D11_USAGE_IMMUTABLE;
-	model_ibuffer.ByteWidth = sizeof(UINT) * import.polygonCount;
+	model_ibuffer.ByteWidth = sizeof(UINT) * import.uniqueIndicies.size();
 	model_ibuffer.BindFlags = D3D11_BIND_INDEX_BUFFER;
 	model_ibuffer.StructureByteStride = sizeof(UINT);
 
@@ -157,7 +154,9 @@ RTA_PROJECT::RTA_PROJECT(HINSTANCE hinst, WNDPROC proc)
 	idata.pSysMem = import.controlPoints.data();
 
 	device->CreateBuffer(&model_ibuffer, &idata, &indexBuffer);
+#pragma endregion
 
+#pragma region Depth Stencil
 	D3D11_TEXTURE2D_DESC model_depth;
 	ZeroMemory(&model_depth, sizeof(D3D11_TEXTURE2D_DESC));
 
@@ -179,7 +178,9 @@ RTA_PROJECT::RTA_PROJECT(HINSTANCE hinst, WNDPROC proc)
 	model_dsvd.Texture2D.MipSlice = 0;
 
 	device->CreateDepthStencilView(depthStencil, &model_dsvd, &dsView.p);
+#pragma endregion
 
+#pragma region Shaders
 	device->CreateVertexShader(RTA_VS, sizeof(RTA_VS), nullptr, &vShader.p);
 	device->CreatePixelShader(RTA_PS, sizeof(RTA_PS), nullptr, &pShader.p);
 
@@ -191,7 +192,9 @@ RTA_PROJECT::RTA_PROJECT(HINSTANCE hinst, WNDPROC proc)
 	};
 
 	device->CreateInputLayout(model_Layout, ARRAYSIZE(model_Layout), RTA_VS, sizeof(RTA_VS), &input.p);
+#pragma endregion
 
+#pragma region Constant Buffers
 	D3D11_BUFFER_DESC cbufferObject;
 	ZeroMemory(&cbufferObject, sizeof(D3D11_BUFFER_DESC));
 
@@ -214,6 +217,9 @@ RTA_PROJECT::RTA_PROJECT(HINSTANCE hinst, WNDPROC proc)
 
 	device->CreateBuffer(&cbufferScene, NULL, &constantBufferScene.p);
 
+#pragma endregion
+
+#pragma region Sampler
 	D3D11_SAMPLER_DESC samplerDesc;
 	ZeroMemory(&sampler, sizeof(D3D11_SAMPLER_DESC));
 
@@ -225,6 +231,7 @@ RTA_PROJECT::RTA_PROJECT(HINSTANCE hinst, WNDPROC proc)
 	samplerDesc.MaxLOD = D3D11_FLOAT32_MAX;
 
 	device->CreateSamplerState(&samplerDesc, &sampler.p);
+#pragma endregion
 }
 
 bool RTA_PROJECT::Run()
@@ -269,7 +276,8 @@ bool RTA_PROJECT::ShutDown()
 
 int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPTSTR lpCmdLine, int nCmdShow);
 LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wparam, LPARAM lparam);
-int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE, LPTSTR, int)
+
+int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPTSTR lpCmdLine, int nCmdShow)
 {
 	srand(unsigned int(time(0)));
 	RTA_PROJECT myApp(hInstance, (WNDPROC)WndProc);
@@ -285,6 +293,7 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE, LPTSTR, int)
 	myApp.ShutDown();
 	return 0;
 }
+
 LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
 	if (GetAsyncKeyState(VK_ESCAPE))

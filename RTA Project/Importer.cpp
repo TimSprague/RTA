@@ -73,6 +73,36 @@ void Importer::ImportPolygons(FbxMesh* inNode)
 
 			// replace the vertx with the tempVert
 			totalVertexes[vertexCounter] = tempVerts;
+
+			if (uniqueVertices.size() == 0)
+			{
+				uniqueVertices.push_back(tempVerts);
+				uniqueIndicies.push_back(0);
+				vertexCounter++;
+				continue;
+			}
+
+			for (unsigned int k = 0; k < uniqueVertices.size(); ++k)
+			{
+				if (   uniqueVertices[k].position.x == tempVerts.position.x
+					&& uniqueVertices[k].position.y == tempVerts.position.y
+					&& uniqueVertices[k].position.z == tempVerts.position.z
+					&& uniqueVertices[k].normal.x == tempVerts.normal.x
+					&& uniqueVertices[k].normal.y == tempVerts.normal.y
+					&& uniqueVertices[k].normal.z == tempVerts.normal.z
+					&& uniqueVertices[k].UV.x == tempVerts.UV.x
+					&& uniqueVertices[k].UV.y == tempVerts.UV.y)
+				{
+
+					uniqueIndicies.push_back(k);
+					continue;
+				}
+				else
+				{
+					uniqueVertices.push_back(tempVerts);
+					uniqueIndicies.push_back(uniqueVertices.size()-1);
+				}
+			}
 			vertexCounter++;
 			
 		}
@@ -107,7 +137,7 @@ void Importer::ImportFile(string _filename)
 		if (scene->GetRootNode()->GetChild(i)->GetNodeAttribute()->GetAttributeType() == FbxNodeAttribute::eMesh)
 		{
 			ImportPolygons(scene->GetRootNode()->GetChild(i)->GetMesh());
-			FindUniqueIndices();
+			//FindUniqueIndices();
 			break;
 		}
 	}
@@ -203,8 +233,6 @@ void Importer::FileOpen(string _filename)
 	uniqueIndicies = fbxVectors[0].uniqueIndicies;
 	uniqueVertices = fbxVectors[0].uniqueVertices;
 }
-
-
 
 Importer::~Importer()
 {

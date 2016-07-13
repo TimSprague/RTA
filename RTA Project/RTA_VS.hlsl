@@ -30,7 +30,7 @@ V_OUT main(V_IN input)
 {
 	V_OUT output = (V_OUT)0;
 
-	float localH = float4(input.posH.xyz, 1);
+	float4 localH = float4(input.posH.xyz, 1);
 
 	output.worldPos = localH.xyzw;
 
