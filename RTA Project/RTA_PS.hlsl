@@ -12,6 +12,6 @@ struct P_IN
 
 float4 main(P_IN input) : SV_TARGET
 {
-	float4 baseColor = baseTexture.Sample(filters, input.posW.xyz);
+	float4 baseColor = baseTexture.Sample(filters, input.posH.xyz);
 	return baseColor;
 }
