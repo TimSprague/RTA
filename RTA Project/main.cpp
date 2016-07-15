@@ -50,6 +50,10 @@ class RTA_PROJECT
 	vector<OBJVERTEX> v_model;
 	vector<UINT> v_modelCount;
 
+	POINT currPos;
+
+	XTime timer;
+
 public:
 
 	RTA_PROJECT(HINSTANCE hinst, WNDPROC proc);
@@ -247,11 +251,14 @@ RTA_PROJECT::RTA_PROJECT(HINSTANCE hinst, WNDPROC proc)
 
 #pragma region Texture DDS
 	CreateDDSTextureFromFile(device, L"Teddy_D.dds", NULL, &srv.p);
+#pragma endregion
+
 }
 
 bool RTA_PROJECT::Run()
 {
 	Camera_Movement();
+	GetCursorPos(&currPos);
 
 	deviceContext->ClearRenderTargetView(rtv, clearColor);
 	deviceContext->ClearDepthStencilView(dsView, D3D11_CLEAR_DEPTH, 1, 0);
@@ -332,6 +339,8 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 
 void RTA_PROJECT::Camera_Movement()
 {
+	
+
 	camera.viewMatrix = XMMatrixInverse(NULL, camera.viewMatrix);
 
 	if (GetAsyncKeyState('W'))
@@ -388,5 +397,96 @@ void RTA_PROJECT::Camera_Movement()
 		camera.viewMatrix.r[3].m128_f32[1] -= 0.05f;
 	}
 
+	if (GetAsyncKeyState(VK_UP))
+	{
+		DirectX::XMVECTOR temp;
+
+		temp.m128_f32[0] = camera.viewMatrix.r[3].m128_f32[0];
+		temp.m128_f32[1] = camera.viewMatrix.r[3].m128_f32[1];
+		temp.m128_f32[2] = camera.viewMatrix.r[3].m128_f32[2];
+
+		camera.viewMatrix.r[3].m128_f32[0] = camera.viewMatrix.r[3].m128_f32[1] = camera.viewMatrix.r[3].m128_f32[2] = 0;
+
+		camera.viewMatrix = XMMatrixMultiply(DirectX::XMMatrixRotationX(-0.005f), camera.viewMatrix);
+
+		camera.viewMatrix.r[3].m128_f32[0] = temp.m128_f32[0];
+		camera.viewMatrix.r[3].m128_f32[1] = temp.m128_f32[1];
+		camera.viewMatrix.r[3].m128_f32[2] = temp.m128_f32[2];
+	}
+
+	if (GetAsyncKeyState(VK_DOWN))
+	{
+		DirectX::XMVECTOR temp;
+
+		temp.m128_f32[0] = camera.viewMatrix.r[3].m128_f32[0];
+		temp.m128_f32[1] = camera.viewMatrix.r[3].m128_f32[1];
+		temp.m128_f32[2] = camera.viewMatrix.r[3].m128_f32[2];
+
+		camera.viewMatrix.r[3].m128_f32[0] = camera.viewMatrix.r[3].m128_f32[1] = camera.viewMatrix.r[3].m128_f32[2] = 0;
+
+		camera.viewMatrix = XMMatrixMultiply(DirectX::XMMatrixRotationX(0.005f), camera.viewMatrix);
+
+		camera.viewMatrix.r[3].m128_f32[0] = temp.m128_f32[0];
+		camera.viewMatrix.r[3].m128_f32[1] = temp.m128_f32[1];
+		camera.viewMatrix.r[3].m128_f32[2] = temp.m128_f32[2];
+	}
+
+	if (GetAsyncKeyState(VK_RIGHT))
+	{
+		DirectX::XMVECTOR temp;
+
+		temp.m128_f32[0] = camera.viewMatrix.r[3].m128_f32[0];
+		temp.m128_f32[1] = camera.viewMatrix.r[3].m128_f32[1];
+		temp.m128_f32[2] = camera.viewMatrix.r[3].m128_f32[2];
+
+		camera.viewMatrix.r[3].m128_f32[0] = camera.viewMatrix.r[3].m128_f32[1] = camera.viewMatrix.r[3].m128_f32[2] = 0;
+
+		camera.viewMatrix = XMMatrixMultiply(camera.viewMatrix, DirectX::XMMatrixRotationY(0.005f));
+
+		camera.viewMatrix.r[3].m128_f32[0] = temp.m128_f32[0];
+		camera.viewMatrix.r[3].m128_f32[1] = temp.m128_f32[1];
+		camera.viewMatrix.r[3].m128_f32[2] = temp.m128_f32[2];
+	}
+
+	if (GetAsyncKeyState(VK_LEFT))
+	{
+		DirectX::XMVECTOR temp;
+
+		temp.m128_f32[0] = camera.viewMatrix.r[3].m128_f32[0];
+		temp.m128_f32[1] = camera.viewMatrix.r[3].m128_f32[1];
+		temp.m128_f32[2] = camera.viewMatrix.r[3].m128_f32[2];
+
+		camera.viewMatrix.r[3].m128_f32[0] = camera.viewMatrix.r[3].m128_f32[1] = camera.viewMatrix.r[3].m128_f32[2] = 0;
+
+		camera.viewMatrix = XMMatrixMultiply(camera.viewMatrix, DirectX::XMMatrixRotationY(-0.005f));
+
+		camera.viewMatrix.r[3].m128_f32[0] = temp.m128_f32[0];
+		camera.viewMatrix.r[3].m128_f32[1] = temp.m128_f32[1];
+		camera.viewMatrix.r[3].m128_f32[2] = temp.m128_f32[2];
+	}
+	/*if (GetAsyncKeyState(VK_RBUTTON))
+	{
+
+		POINT tempMouse;
+		GetCursorPos(&tempMouse);
+		float deltaX = tempMouse.x - currPos.x;
+		float deltaY = tempMouse.y - currPos.y;
+
+		DirectX::XMVECTOR tempOs = { camera.viewMatrix.r[3].m128_f32[0],camera.viewMatrix.r[3].m128_f32[1], camera.viewMatrix.r[3].m128_f32[2], camera.viewMatrix.r[3].m128_f32[3] };
+
+		camera.viewMatrix.r[3].m128_f32[0] = 0;
+		camera.viewMatrix.r[3].m128_f32[1] = 0;
+		camera.viewMatrix.r[3].m128_f32[2] = 0;
+
+		camera.viewMatrix = DirectX::XMMatrixMultiply(DirectX::XMMatrixRotationX(deltaY * (10 * timer.Delta())), camera.viewMatrix);
+		camera.viewMatrix = DirectX::XMMatrixMultiply(camera.viewMatrix, DirectX::XMMatrixRotationY(deltaX * (10 * timer.Delta())));
+
+		camera.viewMatrix.r[3].m128_f32[0] = tempOs.m128_f32[0];
+		camera.viewMatrix.r[3].m128_f32[1] = tempOs.m128_f32[1];
+		camera.viewMatrix.r[3].m128_f32[2] = tempOs.m128_f32[2];
+
+		currPos = tempMouse;
+
+	}*/
 	camera.viewMatrix = XMMatrixInverse(NULL, camera.viewMatrix);
 }
