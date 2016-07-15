@@ -13,8 +13,8 @@ public:
 	struct Vertex
 	{
 		DirectX::XMFLOAT3 position;
-		DirectX::XMFLOAT3 normal;
 		DirectX::XMFLOAT2 UV;
+		DirectX::XMFLOAT3 normal;
 
 		// array for bones per vertex
 		int bones[4] = { -1,-1,-1,-1 };
@@ -31,7 +31,7 @@ public:
 	Importer();
 	void ImportPolygons(FbxMesh* inNode);
 	void ImportFile(std::string _filename);
-	void FindUniqueIndices();
+	//void FindUniqueIndices();
 	void FileSave(string _filename);
 	void FileOpen(string _filename);
 	~Importer();

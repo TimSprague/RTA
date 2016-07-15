@@ -1,6 +1,14 @@
 #include "stdafx.h"
 #include "Importer.h"
 
+float aspectRatio = (float)(BACKBUFFER_WIDTH) / (BACKBUFFER_HEIGHT);
+float zNear = 0.1f;
+float zFar = 100.0f;
+float zBuffer[PIXELS];
+UINT Raster[PIXELS];
+
+float clearColor[4] = { 0.0f, 0.0f, 1.0f, 1.0f };
+
 class RTA_PROJECT
 {
 	HINSTANCE						application;
@@ -39,29 +47,16 @@ class RTA_PROJECT
 
 	Importer import;
 
-	vector<OBJVERTEX> v_model, v_plane;
-	vector<UINT> v_modelCount, v_planeCount;
+	vector<OBJVERTEX> v_model;
+	vector<UINT> v_modelCount;
 
 public:
 
 	RTA_PROJECT(HINSTANCE hinst, WNDPROC proc);
 	bool Run();
 	bool ShutDown();
-	
+	void Camera_Movement();
 };
-
-float aspectRatio = (float)(BACKBUFFER_WIDTH) / (BACKBUFFER_HEIGHT);
-float zNear = 0.1f;
-float zFar = 100.0f;
-float zBuffer[PIXELS];
-UINT Raster[PIXELS];
-
-float Degrees_to_Radian(float Deg)
-{
-	return Deg * PI / 180.0f;
-}
-
-float clearColor[4] = { 0.0f, 0.0f, 1.0f, 1.0f };
 
 RTA_PROJECT::RTA_PROJECT(HINSTANCE hinst, WNDPROC proc)
 {
@@ -90,6 +85,7 @@ RTA_PROJECT::RTA_PROJECT(HINSTANCE hinst, WNDPROC proc)
 
 	ShowWindow(window, SW_SHOW);
 
+#pragma region Swap Chain
 	DXGI_SWAP_CHAIN_DESC swap_chain;
 	ZeroMemory(&swap_chain, sizeof(DXGI_SWAP_CHAIN_DESC));
 	swap_chain.BufferCount = 1;
@@ -99,7 +95,7 @@ RTA_PROJECT::RTA_PROJECT(HINSTANCE hinst, WNDPROC proc)
 	swap_chain.BufferDesc.ScanlineOrdering = DXGI_MODE_SCANLINE_ORDER_UNSPECIFIED;
 	swap_chain.BufferDesc.Scaling = DXGI_MODE_SCALING_UNSPECIFIED;
 	swap_chain.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
-	swap_chain.SampleDesc.Count = 4;
+	swap_chain.SampleDesc.Count = 1;
 	swap_chain.OutputWindow = window;
 	swap_chain.Windowed = true;
 	swap_chain.SwapEffect = DXGI_SWAP_EFFECT_DISCARD;
@@ -107,15 +103,18 @@ RTA_PROJECT::RTA_PROJECT(HINSTANCE hinst, WNDPROC proc)
 
 	D3D11CreateDeviceAndSwapChain(NULL, D3D_DRIVER_TYPE_HARDWARE, NULL, D3D11_CREATE_DEVICE_DEBUG, NULL, 0, D3D11_SDK_VERSION, &swap_chain, &swapchain, &device, NULL, &deviceContext);
 
-	ID3D11Resource *resource;
+	CComPtr<ID3D11Resource> resource;
 
 	swapchain->GetBuffer(0, __uuidof(resource),
 		reinterpret_cast<void**>(&resource));
 
 	device->CreateRenderTargetView(resource, NULL, &rtv);
 
-	resource->Release();
+	resource.p->Release();
 
+#pragma endregion
+
+#pragma region Viewport
 	// Viewport description
 	viewport.TopLeftX = 0;
 	viewport.TopLeftY = 0;
@@ -123,6 +122,7 @@ RTA_PROJECT::RTA_PROJECT(HINSTANCE hinst, WNDPROC proc)
 	viewport.Height = BACKBUFFER_HEIGHT;
 	viewport.MinDepth = 0;
 	viewport.MaxDepth = 1;
+#pragma endregion
 
 #pragma region Vertex buffers
 	// Vertex buffer
@@ -151,7 +151,7 @@ RTA_PROJECT::RTA_PROJECT(HINSTANCE hinst, WNDPROC proc)
 
 	D3D11_SUBRESOURCE_DATA idata;
 	ZeroMemory(&idata, sizeof(D3D11_SUBRESOURCE_DATA));
-	idata.pSysMem = import.controlPoints.data();
+	idata.pSysMem = import.uniqueIndicies.data();
 
 	device->CreateBuffer(&model_ibuffer, &idata, &indexBuffer);
 #pragma endregion
@@ -165,7 +165,7 @@ RTA_PROJECT::RTA_PROJECT(HINSTANCE hinst, WNDPROC proc)
 	model_depth.MipLevels = 1;
 	model_depth.ArraySize = 1;
 	model_depth.Format = DXGI_FORMAT_D32_FLOAT;
-	model_depth.SampleDesc.Count = 4;
+	model_depth.SampleDesc.Count = 1;
 	model_depth.Usage = D3D11_USAGE_DEFAULT;
 	model_depth.BindFlags = D3D11_BIND_DEPTH_STENCIL;
 
@@ -174,10 +174,12 @@ RTA_PROJECT::RTA_PROJECT(HINSTANCE hinst, WNDPROC proc)
 	D3D11_DEPTH_STENCIL_VIEW_DESC model_dsvd;
 	ZeroMemory(&model_dsvd, sizeof(D3D11_DEPTH_STENCIL_VIEW_DESC));
 	model_dsvd.Format = DXGI_FORMAT_D32_FLOAT;
-	model_dsvd.ViewDimension = D3D11_DSV_DIMENSION_TEXTURE2DMS;
+	model_dsvd.ViewDimension = D3D11_DSV_DIMENSION_TEXTURE2D;
 	model_dsvd.Texture2D.MipSlice = 0;
 
 	device->CreateDepthStencilView(depthStencil, &model_dsvd, &dsView.p);
+
+	deviceContext->OMSetRenderTargets(1, &rtv.p, dsView);
 #pragma endregion
 
 #pragma region Shaders
@@ -186,8 +188,8 @@ RTA_PROJECT::RTA_PROJECT(HINSTANCE hinst, WNDPROC proc)
 
 	D3D11_INPUT_ELEMENT_DESC model_Layout[] =
 	{
-		{ "POSITION", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 },
-		{ "UV", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 },
+		{ "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 },
+		{ "UV", 0, DXGI_FORMAT_R32G32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 },
 		{ "NORMALS", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 }
 	};
 
@@ -221,7 +223,7 @@ RTA_PROJECT::RTA_PROJECT(HINSTANCE hinst, WNDPROC proc)
 
 #pragma region Sampler
 	D3D11_SAMPLER_DESC samplerDesc;
-	ZeroMemory(&sampler, sizeof(D3D11_SAMPLER_DESC));
+	ZeroMemory(&samplerDesc, sizeof(D3D11_SAMPLER_DESC));
 
 	samplerDesc.Filter = D3D11_FILTER_COMPARISON_MIN_MAG_MIP_POINT;
 	samplerDesc.AddressU = D3D11_TEXTURE_ADDRESS_WRAP;
@@ -232,25 +234,44 @@ RTA_PROJECT::RTA_PROJECT(HINSTANCE hinst, WNDPROC proc)
 
 	device->CreateSamplerState(&samplerDesc, &sampler.p);
 #pragma endregion
+
+#pragma region Camera
+	model.worldMatrix = DirectX::XMMatrixTranslation(0.0f, 0.0f, 3.0f);
+
+	camera.viewMatrix = DirectX::XMMatrixIdentity();
+	camera.viewMatrix = XMMatrixInverse(NULL, camera.viewMatrix);
+	camera.projMatrix = DirectX::XMMatrixPerspectiveFovLH(DirectX::XMConvertToRadians(65), aspectRatio * .5f, zNear, zFar);
+
+
+#pragma endregion
+
+#pragma region Texture DDS
+	CreateDDSTextureFromFile(device, L"Teddy_D.dds", NULL, &srv.p);
 }
 
 bool RTA_PROJECT::Run()
 {
+	Camera_Movement();
+
 	deviceContext->ClearRenderTargetView(rtv, clearColor);
-	deviceContext->OMSetRenderTargets(1, &rtv.p, dsView);
 	deviceContext->ClearDepthStencilView(dsView, D3D11_CLEAR_DEPTH, 1, 0);
 
 	deviceContext->VSSetConstantBuffers(0, 1, &constantBufferObj.p);
 	deviceContext->VSSetConstantBuffers(1, 1, &constantBufferScene.p);
 
-	D3D11_MAPPED_SUBRESOURCE map;
-	deviceContext->Map(constantBufferObj, 0, D3D11_MAP_WRITE_DISCARD, 0, &map);
-	memcpy(map.pData, &camera, sizeof(SCENE));
+	D3D11_MAPPED_SUBRESOURCE map_camera;
+	deviceContext->Map(constantBufferScene, 0, D3D11_MAP_WRITE_DISCARD, 0, &map_camera);
+	memcpy(map_camera.pData, &camera, sizeof(SCENE));
 	deviceContext->Unmap(constantBufferScene, 0);
 
 	deviceContext->RSSetViewports(1, &viewport);
+	
+	D3D11_MAPPED_SUBRESOURCE map;
+	deviceContext->Map(constantBufferObj, 0, D3D11_MAP_WRITE_DISCARD, 0, &map);
+	memcpy(map.pData, &model, sizeof(OBJECT));
+	deviceContext->Unmap(constantBufferObj, 0);
 
-	UINT stridesize = sizeof(OBJVERTEX);
+	UINT stridesize = sizeof(Importer::Vertex);
 	UINT strideoffset = 0;
 	deviceContext->IASetVertexBuffers(0, 1, &vertexBuffer.p, &stridesize, &strideoffset);
 	deviceContext->IASetIndexBuffer(indexBuffer, DXGI_FORMAT_R32_UINT, 0);
@@ -262,9 +283,12 @@ bool RTA_PROJECT::Run()
 
 	deviceContext->IASetInputLayout(input);
 	
-	deviceContext->DrawIndexed(import.totalVertexes.size(), 0, 0);
-
+	deviceContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+	
+	deviceContext->DrawIndexed(import.uniqueIndicies.size(), 0, 0);
+	//deviceContext->Draw(import.uniqueVertices.size(), 0);
 	swapchain->Present(0, 0);
+
 	return true;
 }
 
@@ -304,4 +328,65 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 					   break;
 	}
 	return DefWindowProc(hWnd, message, wParam, lParam);
+}
+
+void RTA_PROJECT::Camera_Movement()
+{
+	camera.viewMatrix = XMMatrixInverse(NULL, camera.viewMatrix);
+
+	if (GetAsyncKeyState('W'))
+	{
+		DirectX::XMVECTOR temp;
+		temp.m128_f32[0] = 0;
+		temp.m128_f32[1] = 0;
+		temp.m128_f32[2] = 0.05f;
+		temp.m128_f32[3] = camera.viewMatrix.r[3].m128_f32[3];
+
+		camera.viewMatrix = XMMatrixMultiply(DirectX::XMMatrixTranslationFromVector(temp), camera.viewMatrix);
+	}
+
+	if (GetAsyncKeyState('S'))
+	{
+		DirectX::XMVECTOR temp;
+		temp.m128_f32[0] = 0;
+		temp.m128_f32[1] = 0;
+		temp.m128_f32[2] = -0.05f;
+		temp.m128_f32[3] = camera.viewMatrix.r[3].m128_f32[3];
+
+		camera.viewMatrix = XMMatrixMultiply(DirectX::XMMatrixTranslationFromVector(temp), camera.viewMatrix);
+	}
+
+	if (GetAsyncKeyState('A'))
+	{
+		DirectX::XMVECTOR temp;
+		temp.m128_f32[0] = -0.05f;
+		temp.m128_f32[1] = 0;
+		temp.m128_f32[2] = 0;
+		temp.m128_f32[3] = camera.viewMatrix.r[3].m128_f32[3];
+
+		camera.viewMatrix = XMMatrixMultiply(DirectX::XMMatrixTranslationFromVector(temp), camera.viewMatrix);
+	}
+
+	if (GetAsyncKeyState('D'))
+	{
+		DirectX::XMVECTOR temp;
+		temp.m128_f32[0] = 0.05f;
+		temp.m128_f32[1] = 0;
+		temp.m128_f32[2] = 0;
+		temp.m128_f32[3] = camera.viewMatrix.r[3].m128_f32[3];
+
+		camera.viewMatrix = XMMatrixMultiply(DirectX::XMMatrixTranslationFromVector(temp), camera.viewMatrix);
+	}
+
+	if (GetAsyncKeyState('Z'))
+	{
+		camera.viewMatrix.r[3].m128_f32[1] += 0.05f;
+	}
+
+	if (GetAsyncKeyState('X'))
+	{
+		camera.viewMatrix.r[3].m128_f32[1] -= 0.05f;
+	}
+
+	camera.viewMatrix = XMMatrixInverse(NULL, camera.viewMatrix);
 }
