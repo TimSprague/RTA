@@ -24,6 +24,13 @@ struct SCENE
 	DirectX::XMMATRIX projMatrix;
 };
 
+struct DIRECTIONAL_LIGHT
+{
+	DirectX::XMFLOAT4 directionaldir;
+	DirectX::XMFLOAT4 directionalcolor;
+	DirectX::XMMATRIX directionalMatrix;
+};
+
 
 
 

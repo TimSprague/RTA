@@ -10,8 +10,21 @@ struct P_IN
 	float4 worldPos : WORLD_POS;
 };
 
+cbuffer dLight : register(b0)
+{
+	float4 directionalDir;
+	float4 directionalColor;
+}
+
 float4 main(P_IN input) : SV_TARGET
 {
 	float4 baseColor = baseTexture.Sample(filters, input.uv.xy);
-	return baseColor;
+
+	float4 ambient = baseColor * .10;
+
+	float lightRatio = saturate(dot(-directionalDir.xyz, input.normal.xyz));
+
+	float4 result = lightRatio * directionalColor * baseColor;
+
+	return result;
 }

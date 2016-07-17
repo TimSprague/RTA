@@ -150,13 +150,13 @@ void Importer::ImportFile(string _filename)
 			else
 			{
 				ImportPolygons(scene->GetRootNode()->GetChild(i)->GetMesh());
+				FileSave(_filename + ".bin");
 			}
 
 			break;
 		}
 	}
 
-	FileSave(_filename + ".bin");
 }
 
 //void Importer::FindUniqueIndices()

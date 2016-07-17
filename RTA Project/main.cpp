@@ -21,7 +21,7 @@ class RTA_PROJECT
 	CComPtr<IDXGISwapChain> swapchain;
 	D3D11_VIEWPORT viewport;
 
-	CComPtr<ID3D11Buffer> vertexBuffer, vertexBufferPlane, indexBuffer, indexBufferPlane, constantBufferObj, constantBufferScene;
+	CComPtr<ID3D11Buffer> vertexBuffer, vertexBufferPlane, indexBuffer, indexBufferPlane, constantBufferObj, constantBufferScene, constantBufferDirectional;
 
 	CComPtr<ID3D11InputLayout> input;
 
@@ -47,8 +47,7 @@ class RTA_PROJECT
 
 	Importer import;
 
-	vector<OBJVERTEX> v_model;
-	vector<UINT> v_modelCount;
+	DIRECTIONAL_LIGHT direction;
 
 	POINT currPos;
 
@@ -60,6 +59,7 @@ public:
 	bool Run();
 	bool ShutDown();
 	void Camera_Movement();
+	void Sun();
 };
 
 RTA_PROJECT::RTA_PROJECT(HINSTANCE hinst, WNDPROC proc)
@@ -223,6 +223,18 @@ RTA_PROJECT::RTA_PROJECT(HINSTANCE hinst, WNDPROC proc)
 
 	device->CreateBuffer(&cbufferScene, NULL, &constantBufferScene.p);
 
+	D3D11_BUFFER_DESC cbufferDirectional;
+	ZeroMemory(&cbufferDirectional, sizeof(D3D11_BUFFER_DESC));
+
+	cbufferDirectional.ByteWidth = sizeof(DIRECTIONAL_LIGHT);
+	cbufferDirectional.Usage = D3D11_USAGE_DYNAMIC;
+	cbufferDirectional.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
+	cbufferDirectional.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
+	cbufferDirectional.StructureByteStride = sizeof(float);
+
+	device->CreateBuffer(&cbufferDirectional, NULL, &constantBufferDirectional.p);
+
+
 #pragma endregion
 
 #pragma region Sampler
@@ -246,6 +258,14 @@ RTA_PROJECT::RTA_PROJECT(HINSTANCE hinst, WNDPROC proc)
 	camera.viewMatrix = XMMatrixInverse(NULL, camera.viewMatrix);
 	camera.projMatrix = DirectX::XMMatrixPerspectiveFovLH(DirectX::XMConvertToRadians(65), aspectRatio * .5f, zNear, zFar);
 
+	// Direction light
+	direction.directionalMatrix = DirectX::XMMatrixIdentity();
+	direction.directionaldir = { 0.0f, 0.0f, 1.0f, 0.0f };
+	direction.directionalcolor = { 1.0f, 1.0f, 0.878f, 1.0f };
+	direction.directionalMatrix.r[3].m128_f32[0] = direction.directionaldir.x;
+	direction.directionalMatrix.r[3].m128_f32[1] = direction.directionaldir.y;
+	direction.directionalMatrix.r[3].m128_f32[2] = direction.directionaldir.z;
+	direction.directionalMatrix.r[3].m128_f32[3] = direction.directionaldir.w;
 
 #pragma endregion
 
@@ -257,7 +277,10 @@ RTA_PROJECT::RTA_PROJECT(HINSTANCE hinst, WNDPROC proc)
 
 bool RTA_PROJECT::Run()
 {
+	timer.Signal();
+
 	Camera_Movement();
+	Sun();
 	GetCursorPos(&currPos);
 
 	deviceContext->ClearRenderTargetView(rtv, clearColor);
@@ -265,6 +288,13 @@ bool RTA_PROJECT::Run()
 
 	deviceContext->VSSetConstantBuffers(0, 1, &constantBufferObj.p);
 	deviceContext->VSSetConstantBuffers(1, 1, &constantBufferScene.p);
+
+	deviceContext->PSSetConstantBuffers(0, 1, &constantBufferDirectional.p);
+
+	D3D11_MAPPED_SUBRESOURCE directionalLight;
+	deviceContext->Map(constantBufferDirectional, 0, D3D11_MAP_WRITE_DISCARD, 0, &directionalLight);
+	memcpy(directionalLight.pData, &direction, sizeof(DIRECTIONAL_LIGHT));
+	deviceContext->Unmap(constantBufferDirectional, 0);
 
 	D3D11_MAPPED_SUBRESOURCE map_camera;
 	deviceContext->Map(constantBufferScene, 0, D3D11_MAP_WRITE_DISCARD, 0, &map_camera);
@@ -489,4 +519,22 @@ void RTA_PROJECT::Camera_Movement()
 
 	}*/
 	camera.viewMatrix = XMMatrixInverse(NULL, camera.viewMatrix);
+}
+
+void RTA_PROJECT::Sun()
+{
+	// Directional movement
+	DirectX::XMMATRIX sunmovement = DirectX::XMMatrixIdentity();
+
+	sunmovement.r[3].m128_f32[0] = direction.directionaldir.x;
+	sunmovement.r[3].m128_f32[1] = direction.directionaldir.y;
+	sunmovement.r[3].m128_f32[2] = direction.directionaldir.z;
+	sunmovement.r[3].m128_f32[3] = direction.directionaldir.w;
+
+	sunmovement = XMMatrixMultiply(sunmovement, DirectX::XMMatrixRotationX(DirectX::XMConvertToRadians((float)timer.Delta() * 20)));
+
+	direction.directionaldir.x = sunmovement.r[3].m128_f32[0];
+	direction.directionaldir.y = sunmovement.r[3].m128_f32[1];
+	direction.directionaldir.z = sunmovement.r[3].m128_f32[2];
+	direction.directionaldir.w = sunmovement.r[3].m128_f32[3];
 }
