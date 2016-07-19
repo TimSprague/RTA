@@ -256,7 +256,7 @@ RTA_PROJECT::RTA_PROJECT(HINSTANCE hinst, WNDPROC proc)
 
 	camera.viewMatrix = DirectX::XMMatrixIdentity();
 	camera.viewMatrix = XMMatrixInverse(NULL, camera.viewMatrix);
-	camera.projMatrix = DirectX::XMMatrixPerspectiveFovLH(DirectX::XMConvertToRadians(65), aspectRatio * .5f, zNear, zFar);
+	camera.projMatrix = DirectX::XMMatrixPerspectiveFovLH(DirectX::XMConvertToRadians(65), aspectRatio, zNear, zFar);
 
 	// Direction light
 	direction.directionalMatrix = DirectX::XMMatrixIdentity();
@@ -281,7 +281,7 @@ bool RTA_PROJECT::Run()
 
 	Camera_Movement();
 	Sun();
-	GetCursorPos(&currPos);
+	//GetCursorPos(&currPos);
 
 	deviceContext->ClearRenderTargetView(rtv, clearColor);
 	deviceContext->ClearDepthStencilView(dsView, D3D11_CLEAR_DEPTH, 1, 0);
@@ -378,7 +378,7 @@ void RTA_PROJECT::Camera_Movement()
 		DirectX::XMVECTOR temp;
 		temp.m128_f32[0] = 0;
 		temp.m128_f32[1] = 0;
-		temp.m128_f32[2] = 0.05f;
+		temp.m128_f32[2] = 0.005f;
 		temp.m128_f32[3] = camera.viewMatrix.r[3].m128_f32[3];
 
 		camera.viewMatrix = XMMatrixMultiply(DirectX::XMMatrixTranslationFromVector(temp), camera.viewMatrix);
@@ -389,7 +389,7 @@ void RTA_PROJECT::Camera_Movement()
 		DirectX::XMVECTOR temp;
 		temp.m128_f32[0] = 0;
 		temp.m128_f32[1] = 0;
-		temp.m128_f32[2] = -0.05f;
+		temp.m128_f32[2] = -0.005f;
 		temp.m128_f32[3] = camera.viewMatrix.r[3].m128_f32[3];
 
 		camera.viewMatrix = XMMatrixMultiply(DirectX::XMMatrixTranslationFromVector(temp), camera.viewMatrix);
@@ -398,7 +398,7 @@ void RTA_PROJECT::Camera_Movement()
 	if (GetAsyncKeyState('A'))
 	{
 		DirectX::XMVECTOR temp;
-		temp.m128_f32[0] = -0.05f;
+		temp.m128_f32[0] = -0.005f;
 		temp.m128_f32[1] = 0;
 		temp.m128_f32[2] = 0;
 		temp.m128_f32[3] = camera.viewMatrix.r[3].m128_f32[3];
@@ -409,7 +409,7 @@ void RTA_PROJECT::Camera_Movement()
 	if (GetAsyncKeyState('D'))
 	{
 		DirectX::XMVECTOR temp;
-		temp.m128_f32[0] = 0.05f;
+		temp.m128_f32[0] = 0.005f;
 		temp.m128_f32[1] = 0;
 		temp.m128_f32[2] = 0;
 		temp.m128_f32[3] = camera.viewMatrix.r[3].m128_f32[3];
@@ -419,12 +419,12 @@ void RTA_PROJECT::Camera_Movement()
 
 	if (GetAsyncKeyState('Z'))
 	{
-		camera.viewMatrix.r[3].m128_f32[1] += 0.05f;
+		camera.viewMatrix.r[3].m128_f32[1] += 0.005f;
 	}
 
 	if (GetAsyncKeyState('X'))
 	{
-		camera.viewMatrix.r[3].m128_f32[1] -= 0.05f;
+		camera.viewMatrix.r[3].m128_f32[1] -= 0.005f;
 	}
 
 	if (GetAsyncKeyState(VK_UP))
