@@ -22,16 +22,76 @@ public:
 		float weight[4] = { 0,0,0,0 };
 	};
 
-	vector<DirectX::XMFLOAT3> controlPoints;
+	struct KeyFrame
+	{
+		FbxLongLong FrameNum;
+		FbxAMatrix globalTransform;
+		KeyFrame* next;
+
+		KeyFrame() : next(nullptr) {}
+	};
+
+	struct Joint
+	{
+		string name;
+		int parentIndex;
+		FbxAMatrix globalBindposeInverse;
+		KeyFrame* animation;
+		FbxNode* node;
+
+		Joint() : node(nullptr), animation(nullptr)
+		{
+			globalBindposeInverse.SetIdentity();
+			parentIndex = -1;
+		}
+
+		~Joint()
+		{
+			while (animation)
+			{
+				KeyFrame* temp = animation->next;
+				delete animation;
+				animation = temp;
+			}
+		}
+	};
+
+	struct Skeleton
+	{
+		vector<Joint> joints;
+	};
+
+	struct BlendingIndexWeightPair
+	{
+		int blendingIndex[4] = { -1,-1,-1,-1 };
+		float blendingWeight[4] = { 0,0,0,0 };
+	};
+
+	struct CtrlPoint
+	{
+		DirectX::XMFLOAT3 postion;
+		vector<BlendingIndexWeightPair> blendingInfo;
+	};
+
+	vector<CtrlPoint> controlPoints;
 	vector<Vertex> totalVertexes;
 	vector<Vertex> uniqueVertices;
 	vector<UINT> uniqueIndicies;
+	Skeleton skeleton;
 	int polygonCount;
+	vector<FbxMesh*> meshes;
+	FbxString mAnimationName;
+	FbxTime mAnimationLength;
 
 	Importer();
-	void ImportPolygons(FbxMesh* inNode);
+	void ImportPolygons(FbxNode* inNode);
 	void ImportFile(std::string _filename);
-	//void FindUniqueIndices();
+	unsigned int FindJointUsingName(string inString);
+	void ProcessSkeletonHierarchyRecursively(FbxNode* inNode, int inDepth, int index, int inParentIndex);
+	FbxAMatrix GetGeometryTransformation(FbxNode* inNode);
+	void ProcessJointAndAnimation(FbxNode* inNode, FbxMesh* inMesh);
+	void ProcessSkeletonHierarchy(FbxNode* inNode);
+	void NormalizeVectors(float* inVert);
 	void FileSave(string _filename);
 	void FileOpen(string _filename);
 	~Importer();
