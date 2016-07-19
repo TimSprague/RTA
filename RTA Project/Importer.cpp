@@ -5,15 +5,23 @@ Importer::Importer()
 
 }
 
-void Importer::ImportPolygons(FbxMesh* inNode)
+void Importer::ImportPolygons(FbxNode* inNode)
 {
 	if (inNode == nullptr)
 	{
 		return;
 	}
 
+	FbxMesh* currMesh = inNode->GetMesh();
+	meshes.push_back(currMesh);
+	ProcessSkeletonHierarchy(inNode);
+	if (currMesh == nullptr)
+	{
+		ProcessJointAndAnimation(inNode,meshes[0]);
+		return;
+	}
 	// number of control points
-	int numControlPoints = inNode->GetControlPointsCount();
+	int numControlPoints = currMesh->GetControlPointsCount();
 	// fills the vector with float4s to be changed 
 	controlPoints.resize(numControlPoints);
 
@@ -21,13 +29,13 @@ void Importer::ImportPolygons(FbxMesh* inNode)
 	// store control points
 	for (int i = 0; i < numControlPoints; i++)
 	{
-		controlPoints[i].x = (float)inNode->GetControlPointAt(i).mData[0];
-		controlPoints[i].y = (float)inNode->GetControlPointAt(i).mData[1];
-		controlPoints[i].z = (float)inNode->GetControlPointAt(i).mData[2];
+		controlPoints[i].postion.x = (float)currMesh->GetControlPointAt(i).mData[0];
+		controlPoints[i].postion.y = (float)currMesh->GetControlPointAt(i).mData[1];
+		controlPoints[i].postion.z = (float)currMesh->GetControlPointAt(i).mData[2];
 	}
 
 	// number of polygons in this mesh
-	polygonCount = inNode->GetPolygonCount();
+	polygonCount = currMesh->GetPolygonCount();
 	totalVertexes.resize(polygonCount * 3);
 	uniqueVertices.resize(totalVertexes.size());
 
@@ -39,27 +47,29 @@ void Importer::ImportPolygons(FbxMesh* inNode)
 		for (unsigned int j = 0; j < 3; j++)
 		{
 			Vertex tempVerts;
+
 			// the current location on which triangle triangle
-			int controlPointIndex = inNode->GetPolygonVertex(i, j);
+			int controlPointIndex = currMesh->GetPolygonVertex(i, j);
 			// storing the postion of the vertex based on the vertex in the control point
-			tempVerts.position = controlPoints[controlPointIndex];
+			tempVerts.position = controlPoints[controlPointIndex].postion;
+
 
 			// read the first layer, the first texture
-			FbxLayerElementUV* tempUV = inNode->GetLayer(0)->GetUVs();
+			FbxLayerElementUV* tempUV = currMesh->GetLayer(0)->GetUVs();
 			// check which the uv was mapped to and pass to the tempVertex.UV
 			switch (tempUV->GetMappingMode())
 			{
 			case FbxLayerElement::eByControlPoint:
 			{
 				tempVerts.UV.x = (float)tempUV->GetDirectArray().GetAt(controlPointIndex).mData[0];
-				tempVerts.UV.y = 1.0 - (float)tempUV->GetDirectArray().GetAt(controlPointIndex).mData[1];
+				tempVerts.UV.y = (float)1.0 - (float)tempUV->GetDirectArray().GetAt(controlPointIndex).mData[1];
 			}
 			break;
 			case FbxLayerElement::eByPolygonVertex:
 			{
 				// get the information at the uv on the current uv on the texture of the polygon
-				tempVerts.UV.x = (float)tempUV->GetDirectArray().GetAt(inNode->GetTextureUVIndex(i, j)).mData[0];
-				tempVerts.UV.y = 1.0 - (float)tempUV->GetDirectArray().GetAt(inNode->GetTextureUVIndex(i, j)).mData[1];
+				tempVerts.UV.x = (float)tempUV->GetDirectArray().GetAt(currMesh->GetTextureUVIndex(i, j)).mData[0];
+				tempVerts.UV.y = (float)1.0 - (float)tempUV->GetDirectArray().GetAt(currMesh->GetTextureUVIndex(i, j)).mData[1];
 			}
 			break;
 			default:
@@ -67,7 +77,7 @@ void Importer::ImportPolygons(FbxMesh* inNode)
 			}
 			// get the normal from the polygon
 			FbxVector4 tempNormal;
-			inNode->GetPolygonVertexNormal(i, j, tempNormal);
+			currMesh->GetPolygonVertexNormal(i, j, tempNormal);
 			// map into tempVert.normal
 			tempVerts.normal.x = (float)tempNormal.mData[0];
 			tempVerts.normal.y = (float)tempNormal.mData[1];
@@ -78,39 +88,11 @@ void Importer::ImportPolygons(FbxMesh* inNode)
 			uniqueVertices[vertexCounter] = tempVerts;
 			uniqueIndicies.push_back(vertexCounter);
 
-			/*if (uniqueVertices.size() == 0)
-			{
-				uniqueVertices.push_back(tempVerts);
-				uniqueIndicies.push_back(0);
-				vertexCounter++;
-				continue;
-			}
-
-			for (unsigned int k = 0; k < uniqueVertices.size(); ++k)
-			{
-				if (   uniqueVertices[k].position.x == tempVerts.position.x
-					&& uniqueVertices[k].position.y == tempVerts.position.y
-					&& uniqueVertices[k].position.z == tempVerts.position.z
-					&& uniqueVertices[k].normal.x == tempVerts.normal.x
-					&& uniqueVertices[k].normal.y == tempVerts.normal.y
-					&& uniqueVertices[k].normal.z == tempVerts.normal.z
-					&& uniqueVertices[k].UV.x == tempVerts.UV.x
-					&& uniqueVertices[k].UV.y == tempVerts.UV.y)
-				{
-
-					uniqueIndicies.push_back(k);
-					continue;
-				}
-				else
-				{
-					uniqueVertices.push_back(tempVerts);
-					uniqueIndicies.push_back(uniqueVertices.size()-1);
-				}
-			}*/
 			vertexCounter++;
 			
 		}
 	}
+
 }
 
 void Importer::ImportFile(string _filename)
@@ -149,54 +131,174 @@ void Importer::ImportFile(string _filename)
 			}
 			else
 			{
-				ImportPolygons(scene->GetRootNode()->GetChild(i)->GetMesh());
-				FileSave(_filename + ".bin");
+				ImportPolygons(scene->GetRootNode()->GetChild(i));
+				continue;
+			}
+		}
+		ImportPolygons(scene->GetRootNode()->GetChild(i));
+	}
+	FileSave(_filename + ".bin");
+
+}
+
+FbxAMatrix Importer::GetGeometryTransformation(FbxNode* inNode)
+{
+	FbxVector4 lT = inNode->GetGeometricTranslation(FbxNode::eSourcePivot);
+	FbxVector4 lR = inNode->GetGeometricRotation(FbxNode::eSourcePivot);
+	FbxVector4 lS = inNode->GetGeometricScaling(FbxNode::eSourcePivot);
+
+	return FbxAMatrix(lT, lR, lS);
+}
+
+unsigned int Importer::FindJointUsingName(string inString)
+{
+	// looping through the wrong thing to find the name, maybe find out which CLUSTER we are
+	// and return that index?
+	FbxMesh* currmesh = meshes[0];
+	unsigned int numDeformers = currmesh->GetDeformerCount();
+	FbxSkin* currSkin = reinterpret_cast<FbxSkin*>(currmesh->GetDeformer(0, FbxDeformer::eSkin));
+	unsigned int numClusters = currSkin->GetClusterCount();
+
+	for (unsigned int i = 0; i < numClusters; i++)
+	{
+		FbxCluster* currCluster = currSkin->GetCluster(i);
+		string name = currCluster->GetLink()->GetName();
+		if (strcmp(name.c_str(), inString.c_str()) == 0)
+			return i;
+	}
+
+	//vector<Joint>::iterator iter;
+	//for (iter = skeleton.joints.begin(); iter != skeleton.joints.end(); iter++)
+	//{
+	//	for (unsigned int i = 0; i < skeleton.joints.size(); i++)
+	//	{
+	//		if (strcmp( skeleton.joints[i].name.c_str(), inString.c_str()) == 0)
+	//			return i;
+	//	}
+	//}
+	return UINT32_MAX;
+}
+
+void Importer::ProcessJointAndAnimation(FbxNode* inNode, FbxMesh* inMesh)
+{
+	FbxMesh* currmesh = inMesh;
+	unsigned int numDeformers = currmesh->GetDeformerCount();
+
+	FbxAMatrix geomTransform = GetGeometryTransformation(inNode);
+
+	for (unsigned int deformerIndex = 0; deformerIndex < numDeformers; deformerIndex++)
+	{
+		FbxSkin* currSkin = reinterpret_cast<FbxSkin*>(currmesh->GetDeformer(deformerIndex, FbxDeformer::eSkin));
+
+		unsigned int	numClusters = currSkin->GetClusterCount();
+		for (unsigned int clusterIndex = 0; clusterIndex < numClusters; clusterIndex++)
+		{
+			FbxCluster* currCluster = currSkin->GetCluster(clusterIndex);
+			string currJointName = currCluster->GetLink()->GetName();
+			unsigned int currJointIndex = FindJointUsingName(currJointName);
+
+			FbxAMatrix transformMatrix;
+			FbxAMatrix transformLinkMatrix;
+			FbxAMatrix globalBindposeInverseMatrix;
+
+			currCluster->GetTransformMatrix(transformMatrix);
+			currCluster->GetTransformLinkMatrix(transformLinkMatrix);
+			globalBindposeInverseMatrix = transformLinkMatrix.Inverse() * transformMatrix * geomTransform;
+
+			skeleton.joints[currJointIndex].globalBindposeInverse = globalBindposeInverseMatrix;
+			skeleton.joints[currJointIndex].node = currCluster->GetLink();
+
+			unsigned int numIndicies = currCluster->GetControlPointIndicesCount();
+			for (unsigned int i = 0; i < numIndicies; i++)
+			{
+
+				BlendingIndexWeightPair currBlending;
+
+					for (int j = 0; j < 4; j++)
+					{
+						if (currBlending.blendingIndex[j] == -1)
+						{
+							currBlending.blendingIndex[j] = currJointIndex;
+							currBlending.blendingWeight[j] = (float)currCluster->GetControlPointIndices()[i];
+						}
+					}
+
+				controlPoints[currCluster->GetControlPointIndices()[i]].blendingInfo.push_back(currBlending);
+			}
+			FbxScene* currScene = inNode->GetScene();
+			FbxAnimStack* currAnimStack = currScene->GetSrcObject<FbxAnimStack>(0);
+			FbxString animStackName = currAnimStack->GetName();
+			FbxTakeInfo* takInfo = currScene->GetTakeInfo(animStackName);
+			FbxTime start = takInfo->mLocalTimeSpan.GetStart();
+			FbxTime end = takInfo->mLocalTimeSpan.GetStop();
+			mAnimationName = animStackName;
+			mAnimationLength = end.GetFrameCount(FbxTime::eFrames24) - start.GetFrameCount(FbxTime::eFrames24) + 1;
+
+			KeyFrame** currAnim = &skeleton.joints[currJointIndex].animation;
+			for (FbxLongLong i = start.GetFrameCount(FbxTime::eFrames24); i < end.GetFrameCount(FbxTime::eFrames24); i++)
+			{
+				FbxTime currTime;
+				currTime.SetFrame(i, FbxTime::eFrames24);
+				*currAnim = new KeyFrame();
+				(*currAnim)->FrameNum = i;
+				FbxAMatrix currTransformOffset = inNode->EvaluateGlobalTransform(currTime) * geomTransform;
+				(*currAnim)->globalTransform = currTransformOffset.Inverse() * currCluster->GetLink()->EvaluateGlobalTransform(currTime);
+				currAnim = &((*currAnim)->next);
 			}
 
-			break;
 		}
+	}
+
+	// normalize the weights 
+	for (unsigned int i = 0; i < totalVertexes.size(); i++)
+	{
+		NormalizeVectors(totalVertexes[i].weight);
+	}
+}
+
+void Importer::NormalizeVectors(float* inVert)
+{
+	float sum = 0.0000000000001f;
+
+	sum = inVert[0] + inVert[1] + inVert[2] + inVert[2];
+
+	inVert[0] /= sum; inVert[1] /= sum; inVert[2] /= sum; inVert[3] /= sum;
+
+	inVert[3] = 1.0f -( inVert[0] - inVert[1] - inVert[2]);
+
+}
+
+void Importer::ProcessSkeletonHierarchy(FbxNode* inNode)
+{
+	int count = inNode->GetChildCount();
+	if (count == 0)
+	{
+		return;
+	}
+
+	for (int i = 0; i < count; i++)
+	{
+		FbxNode* currNode = inNode->GetChild(i);
+		ProcessSkeletonHierarchyRecursively(currNode, 0, 0, -1);
 	}
 
 }
 
-//void Importer::FindUniqueIndices()
-//{
-//	int vertexSize = (int)totalVertexes.size();
-//	Vertex temp;
-//	for (int i = 0; i < vertexSize; i++)
-//	{
-//		for (int j = 0; j < vertexSize; j++)
-//		{
-//			if (i != j)
-//			{
-//				if (totalVertexes[i].position.x == totalVertexes[j].position.x 
-//					&& totalVertexes[i].position.y == totalVertexes[j].position.y
-//					&& totalVertexes[i].position.z == totalVertexes[j].position.z
-//					&& totalVertexes[i].normal.x == totalVertexes[j].normal.x
-//					&& totalVertexes[i].normal.y == totalVertexes[j].normal.y
-//					&& totalVertexes[i].normal.z == totalVertexes[j].normal.z
-//					&& totalVertexes[i].UV.x == totalVertexes[j].UV.x
-//					&& totalVertexes[i].UV.y == totalVertexes[j].UV.y)
-//				{
-//					continue;
-//				}
-//				else
-//				{
-//					temp.position.y = totalVertexes[j].position.y;
-//					temp.position.z = totalVertexes[j].position.z;
-//					temp.normal.x = totalVertexes[j].normal.x;
-//					temp.normal.y = totalVertexes[j].normal.y;
-//					temp.normal.z = totalVertexes[j].normal.z;
-//					temp.UV.x = totalVertexes[j].UV.x;
-//					temp.UV.y = totalVertexes[j].UV.y;
-//					uniqueVertices.push_back(temp);
-//					uniqueIndicies.push_back(j);
-//				}
-//			}
-//		}
-//	}
-//
-//}
+void Importer::ProcessSkeletonHierarchyRecursively(FbxNode* inNode, int inDepth, int index, int inParentIndex)
+{
+	if (inNode->GetNodeAttribute() && inNode->GetNodeAttribute()->GetAttributeType() && inNode->GetNodeAttribute()->GetAttributeType() == FbxNodeAttribute::eSkeleton)
+	{
+		Joint tempJoint;
+		tempJoint.parentIndex = inParentIndex;
+		tempJoint.name = inNode->GetName();
+		skeleton.joints.push_back(tempJoint);
+	}
+	for (int i = 0; i < inNode->GetChildCount(); i++)
+	{
+		ProcessSkeletonHierarchyRecursively(inNode->GetChild(i), inDepth + 1, (int)skeleton.joints.size(), index);
+	}
+}
+
 
 void Importer::FileSave(string _filename)
 {
@@ -214,7 +316,7 @@ void Importer::FileSave(string _filename)
 		bout.write((char*)&polygonCount, sizeof(int));
 
 		bout.write((char*)&size, sizeof(int));
-		bout.write((char*)&controlPoints[0], sizeof(DirectX::XMFLOAT3)*size);
+		bout.write((char*)&controlPoints[0], sizeof(CtrlPoint)*size);
 
 		bout.write((char*)&size1, sizeof(int));
 		bout.write((char*)&totalVertexes[0], sizeof(Vertex)*size1);
@@ -246,7 +348,7 @@ void Importer::FileOpen(string _filename)
 
 		bin.read((char*)&size, sizeof(int));
 		controlPoints.resize(size);
-		bin.read((char*)&controlPoints[0], size * sizeof(DirectX::XMFLOAT3));
+		bin.read((char*)&controlPoints[0], size * sizeof(CtrlPoint));
 
 		bin.read((char*)&size1, sizeof(int));
 		totalVertexes.resize(size1);
