@@ -1,5 +1,6 @@
 #pragma once
 #include <string>
+#include "Importer.h"
 
 class Animation
 {
@@ -9,6 +10,6 @@ public:
 private:
 	float duration;
 
-
+	Importer::Vertex vertices[];
 };
 

@@ -21,7 +21,7 @@ class RTA_PROJECT
 	CComPtr<IDXGISwapChain> swapchain;
 	D3D11_VIEWPORT viewport;
 
-	CComPtr<ID3D11Buffer> vertexBuffer, vertexBufferPlane, indexBuffer, indexBufferPlane, constantBufferObj, constantBufferScene, constantBufferDirectional;
+	CComPtr<ID3D11Buffer> vertexBuffer, vertexBufferPlane, vertexBufferSkeleton, indexBuffer, indexBufferPlane, indexBufferSkeleton, constantBufferObj, constantBufferScene, constantBufferDirectional, constantBufferSkeleton;
 
 	CComPtr<ID3D11InputLayout> input;
 
@@ -41,17 +41,19 @@ class RTA_PROJECT
 
 	CComPtr<ID3D11Resource> texture;
 
-	OBJECT model, plane;
+	OBJECT model, plane, bones;
 
 	SCENE camera;
 
-	Importer import;
+	Importer import, skele;
 
 	DIRECTIONAL_LIGHT direction;
 
 	POINT currPos;
 
 	XTime timer;
+
+	
 
 public:
 
@@ -60,6 +62,11 @@ public:
 	bool ShutDown();
 	void Camera_Movement();
 	void Sun();
+
+	/*const VERTEX Skeleton[]
+	{
+		{}
+	}*/
 };
 
 RTA_PROJECT::RTA_PROJECT(HINSTANCE hinst, WNDPROC proc)
@@ -142,6 +149,20 @@ RTA_PROJECT::RTA_PROJECT(HINSTANCE hinst, WNDPROC proc)
 	data_1.pSysMem = import.totalVertexes.data();
 
 	device->CreateBuffer(&model_vbuffer, &data_1, &vertexBuffer.p);
+
+	D3D11_BUFFER_DESC skeleton_vbuffer;
+	ZeroMemory(&skeleton_vbuffer, sizeof(D3D11_BUFFER_DESC));
+	skeleton_vbuffer.ByteWidth = sizeof(Importer::Skeleton::joints[0].animation->globalTransform) * import.skeleton.joints.size();
+	skeleton_vbuffer.Usage = D3D11_USAGE_IMMUTABLE;
+	skeleton_vbuffer.BindFlags = D3D11_BIND_VERTEX_BUFFER;
+	skeleton_vbuffer.StructureByteStride = sizeof(Importer::Skeleton::joints[0].animation->globalTransform);
+
+	D3D11_SUBRESOURCE_DATA data_2;
+	ZeroMemory(&data_2, sizeof(D3D11_SUBRESOURCE_DATA));
+	data_2.pSysMem = import.skeleton.joints.data();
+
+	device->CreateBuffer(&skeleton_vbuffer, &data_2, &vertexBufferSkeleton.p);
+	
 #pragma endregion
 
 #pragma region Index buffers
@@ -158,6 +179,20 @@ RTA_PROJECT::RTA_PROJECT(HINSTANCE hinst, WNDPROC proc)
 	idata.pSysMem = import.uniqueIndicies.data();
 
 	device->CreateBuffer(&model_ibuffer, &idata, &indexBuffer);
+
+	D3D11_BUFFER_DESC skeleton_ibuffer;
+	ZeroMemory(&skeleton_ibuffer, sizeof(D3D11_BUFFER_DESC));
+	skeleton_ibuffer.Usage = D3D11_USAGE_IMMUTABLE;
+	skeleton_ibuffer.ByteWidth = sizeof(UINT) * import.skeleton.joints.size();
+	skeleton_ibuffer.BindFlags = D3D11_BIND_INDEX_BUFFER;
+	skeleton_ibuffer.StructureByteStride = sizeof(UINT);
+
+	D3D11_SUBRESOURCE_DATA idata1;
+	ZeroMemory(&idata1, sizeof(D3D11_SUBRESOURCE_DATA));
+	idata1.pSysMem = import.skeleton.joints.data();
+
+	device->CreateBuffer(&skeleton_ibuffer, &idata1, &indexBufferSkeleton);
+
 #pragma endregion
 
 #pragma region Depth Stencil
@@ -234,6 +269,16 @@ RTA_PROJECT::RTA_PROJECT(HINSTANCE hinst, WNDPROC proc)
 
 	device->CreateBuffer(&cbufferDirectional, NULL, &constantBufferDirectional.p);
 
+	D3D11_BUFFER_DESC cbufferSkeleton;
+	ZeroMemory(&cbufferSkeleton, sizeof(D3D11_BUFFER_DESC));
+
+	cbufferSkeleton.ByteWidth = sizeof(FbxAMatrix);
+	cbufferSkeleton.Usage = D3D11_USAGE_DYNAMIC;
+	cbufferSkeleton.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
+	cbufferSkeleton.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
+	cbufferSkeleton.StructureByteStride = sizeof(double);
+
+	device->CreateBuffer(&cbufferSkeleton, NULL, &constantBufferSkeleton.p);
 
 #pragma endregion
 
@@ -253,6 +298,7 @@ RTA_PROJECT::RTA_PROJECT(HINSTANCE hinst, WNDPROC proc)
 
 #pragma region Camera
 	model.worldMatrix = DirectX::XMMatrixTranslation(0.0f, 0.0f, 3.0f);
+	bones.worldMatrix = DirectX::XMMatrixTranslation(5.0f, 0.0f, 3.0f);
 
 	camera.viewMatrix = DirectX::XMMatrixIdentity();
 	camera.viewMatrix = XMMatrixInverse(NULL, camera.viewMatrix);
@@ -288,6 +334,7 @@ bool RTA_PROJECT::Run()
 
 	deviceContext->VSSetConstantBuffers(0, 1, &constantBufferObj.p);
 	deviceContext->VSSetConstantBuffers(1, 1, &constantBufferScene.p);
+	//deviceContext->VSSetConstantBuffers(2, 1, &constantBufferSkeleton.p);
 
 	deviceContext->PSSetConstantBuffers(0, 1, &constantBufferDirectional.p);
 
@@ -302,7 +349,8 @@ bool RTA_PROJECT::Run()
 	deviceContext->Unmap(constantBufferScene, 0);
 
 	deviceContext->RSSetViewports(1, &viewport);
-	
+
+#pragma region Teddy
 	D3D11_MAPPED_SUBRESOURCE map;
 	deviceContext->Map(constantBufferObj, 0, D3D11_MAP_WRITE_DISCARD, 0, &map);
 	memcpy(map.pData, &model, sizeof(OBJECT));
@@ -321,9 +369,31 @@ bool RTA_PROJECT::Run()
 	deviceContext->IASetInputLayout(input);
 	
 	deviceContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+	//deviceContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_POINTLIST);
+
 	
 	deviceContext->DrawIndexed(import.uniqueIndicies.size(), 0, 0);
-	//deviceContext->Draw(import.uniqueVertices.size(), 0);
+	//deviceContext->Draw(import.totalVertexes.size(), 0);
+#pragma endregion
+
+#pragma region Skeleton
+	/*D3D11_MAPPED_SUBRESOURCE map1;
+	deviceContext->Map(constantBufferSkeleton, 0, D3D11_MAP_WRITE_DISCARD, 0, &map1);
+	memcpy(map1.pData, &bones, sizeof(OBJECT));
+	deviceContext->Unmap(constantBufferSkeleton, 0);
+
+	UINT strideSize1 = sizeof(import.skeleton.joints[0].animation->globalTransform);
+	UINT strideOffset1 = 0;
+	deviceContext->IASetVertexBuffers(0, 1, &vertexBufferSkeleton, &strideSize1, &strideOffset1);
+	deviceContext->IASetIndexBuffer(indexBufferSkeleton, DXGI_FORMAT_R32_UINT, 0);
+
+	ID3D11ShaderResourceView* nullsrv = nullptr;
+
+	deviceContext->VSSetShader(vShader, nullptr, 0);
+	deviceContext->PSSetShader(pShader, nullptr, 0);
+	deviceContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_POINTLIST);
+	deviceContext->Draw(37, 0);*/
+#pragma endregion
 	swapchain->Present(0, 0);
 
 	return true;
@@ -537,4 +607,9 @@ void RTA_PROJECT::Sun()
 	direction.directionaldir.y = sunmovement.r[3].m128_f32[1];
 	direction.directionaldir.z = sunmovement.r[3].m128_f32[2];
 	direction.directionaldir.w = sunmovement.r[3].m128_f32[3];
+}
+
+int main(int args, char**argv)
+{
+
 }

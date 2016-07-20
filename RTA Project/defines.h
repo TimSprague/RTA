@@ -31,6 +31,11 @@ struct DIRECTIONAL_LIGHT
 	DirectX::XMMATRIX directionalMatrix;
 };
 
+struct VERTEX
+{
+	float vertex[4];
+};
+
 
 
 

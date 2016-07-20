@@ -125,7 +125,7 @@ void Importer::ImportFile(string _filename)
 	{
 		if (scene->GetRootNode()->GetChild(i)->GetNodeAttribute()->GetAttributeType() == FbxNodeAttribute::eMesh)
 		{
-			if (stat(file.c_str(), &st) == 0)
+			/*if (stat(file.c_str(), &st) == 0)
 			{
 				FileOpen(file);
 			}
@@ -133,7 +133,9 @@ void Importer::ImportFile(string _filename)
 			{
 				ImportPolygons(scene->GetRootNode()->GetChild(i));
 				continue;
-			}
+			}*/
+			ImportPolygons(scene->GetRootNode()->GetChild(i));
+
 		}
 		ImportPolygons(scene->GetRootNode()->GetChild(i));
 	}
