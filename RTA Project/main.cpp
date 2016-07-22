@@ -14,7 +14,7 @@ class RTA_PROJECT
 	HINSTANCE						application;
 	WNDPROC							appWndProc;
 	HWND							window;
-
+	
 	CComPtr<ID3D11Device> device;
 	CComPtr<ID3D11DeviceContext> deviceContext;
 	CComPtr<ID3D11RenderTargetView> rtv;

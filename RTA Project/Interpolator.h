@@ -3,16 +3,16 @@
 
 class Interpolator
 {
-
 public:
 	Interpolator();
 	~Interpolator();
 
 	inline void AddTime(float timeToAdd) { currentTime += timeToAdd; }
 	inline void SetTime(float _currentTime) { currentTime = _currentTime; }
+	FbxAMatrix LERP(FbxAMatrix* _matrix1, FbxAMatrix* _matrix2, float _time);
 
 	// Creates the "betweenKeyFrame" data based on the animation and currentTime elements
-	void Process();
+	void Process(Importer::Animation* anim);
 
 private:
 	float currentTime;
@@ -23,7 +23,5 @@ private:
 	// The result of the interpolation, if not using channels
 	Importer::KeyFrame betweenKeyFrame;
 
-	// Or if using channels, we would have one result per joint
-	//KeyFrame betweenKeyFrameChannel[NUMBER_OF_JOINTS_IN_RIG]
 };
 

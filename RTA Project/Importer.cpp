@@ -1,5 +1,5 @@
 #include "Importer.h"
-
+#include "Interpolator.h"
 Importer::Importer()
 {
 
@@ -92,7 +92,8 @@ void Importer::ImportPolygons(FbxNode* inNode)
 			
 		}
 	}
-
+	/*Interpolator temp;
+	temp.Process(&mAnimation);*/
 }
 
 void Importer::ImportFile(string _filename)
@@ -232,7 +233,7 @@ void Importer::ProcessJointAndAnimation(FbxNode* inNode, FbxMesh* inMesh)
 
 			KeyFrame** currAnim = &skeleton.joints[currJointIndex].animation;
 			mAnimation.name = mAnimationName;
-			mAnimation.duration = end.GetFrameCount(FbxTime::eFrames24);
+			mAnimation.duration = (float)end.GetFrameCount(FbxTime::eFrames24);
 
 			for (FbxLongLong i = start.GetFrameCount(FbxTime::eFrames24); i < end.GetFrameCount(FbxTime::eFrames24); i++)
 			{
@@ -261,6 +262,7 @@ void Importer::ProcessJointAndAnimation(FbxNode* inNode, FbxMesh* inMesh)
 	{
 		NormalizeVectors(totalVertexes[i].weight);
 	}
+
 }
 
 void Importer::NormalizeVectors(float* inVert)
