@@ -3,11 +3,13 @@
 
 float aspectRatio = (float)(BACKBUFFER_WIDTH) / (BACKBUFFER_HEIGHT);
 float zNear = 0.1f;
-float zFar = 1000.0f;
+float zFar = 5000.0f;
 float zBuffer[PIXELS];
 UINT Raster[PIXELS];
 
 float clearColor[4] = { 0.0f, 0.0f, 1.0f, 1.0f };
+
+bool modelswitch = true;
 
 class RTA_PROJECT
 {
@@ -21,11 +23,11 @@ class RTA_PROJECT
 	CComPtr<IDXGISwapChain> swapchain;
 	D3D11_VIEWPORT viewport;
 
-	CComPtr<ID3D11Buffer> vertexBuffer, vertexBufferLine, vertexBufferCube, indexBuffer, indexBufferLine, indexBufferCube, constantBufferObj, constantBufferScene, constantBufferDirectional, constantBufferCube, constantBufferLine, constantBufferInstance;
+	CComPtr<ID3D11Buffer> vertexBuffer, vertexBufferLine, vertexBufferCube, indexBuffer, indexBufferLine, indexBufferCube, constantBufferObj, constantBufferScene, constantBufferDirectional, constantBufferCube, constantBufferLine, constantBufferInstance, constantBufferInstanceLine;
 
 	CComPtr<ID3D11InputLayout> input, input1;
 
-	CComPtr<ID3D11VertexShader> vShader, vShader1, vShaderInstance;
+	CComPtr<ID3D11VertexShader> vShader, vShader1, vShaderInstance, vShaderInstanceLines;
 
 	CComPtr<ID3D11PixelShader> pShader, pShader1;
 
@@ -41,11 +43,11 @@ class RTA_PROJECT
 
 	CComPtr<ID3D11Resource> texture;
 
-	OBJECT model, lines, cube;
+	OBJECT model, line, cube;
 
 	SCENE camera;
 
-	Importer import, skele;
+	Importer import;
 
 	DIRECTIONAL_LIGHT direction;
 
@@ -54,8 +56,13 @@ class RTA_PROJECT
 	XTime timer;
 
 	DirectX::XMMATRIX temp = DirectX::XMMatrixIdentity();
+	DirectX::XMMATRIX temp1 = DirectX::XMMatrixIdentity();
+
 	DirectX::XMMATRIX clones[36];
-	DirectX::XMMATRIX line_points[36];
+	DirectX::XMMATRIX lines[36];
+	
+	UINT pointCount = 36;
+	LINE pointLines[36];
 
 
 public:
@@ -139,6 +146,7 @@ RTA_PROJECT::RTA_PROJECT(HINSTANCE hinst, WNDPROC proc)
 #pragma endregion
 
 #pragma region Cube
+
 	CUBE square[8];
 
 	square[0].pos.m128_f32[0] = -1.0f;
@@ -197,8 +205,22 @@ RTA_PROJECT::RTA_PROJECT(HINSTANCE hinst, WNDPROC proc)
 		2,7,6,
 	};
 
+	UINT jointsCount = import.skeleton.joints.size();
+	for (int i = 0; i < jointsCount; i++)
+	{
+			
+			if (!import.skeleton.joints[i].animation)
+			{
+				clones[i] = DirectX::XMMatrixIdentity();
+				continue;
+			}
+			temp1 = ConvertFBX_DX11(import.skeleton.joints[i].animation->globalTransform);
+			pointLines[i].pos.m128_f32[0] = temp1.r[3].m128_f32[0];
+			pointLines[i].pos.m128_f32[1] = temp1.r[3].m128_f32[1];
+			pointLines[i].pos.m128_f32[2] = temp1.r[3].m128_f32[2];	
+	}
+	
 #pragma endregion
-
 
 #pragma region Vertex buffers
 	// Vertex buffer
@@ -230,14 +252,14 @@ RTA_PROJECT::RTA_PROJECT(HINSTANCE hinst, WNDPROC proc)
 
 	D3D11_BUFFER_DESC line_vbuffer;
 	ZeroMemory(&line_vbuffer, sizeof(D3D11_BUFFER_DESC));
-	line_vbuffer.ByteWidth = sizeof(LINE) * 36;
+	line_vbuffer.ByteWidth = sizeof(LINE) * pointCount;
 	line_vbuffer.Usage = D3D11_USAGE_IMMUTABLE;
 	line_vbuffer.BindFlags = D3D11_BIND_VERTEX_BUFFER;
 	line_vbuffer.StructureByteStride = sizeof(LINE);
 
 	D3D11_SUBRESOURCE_DATA data_3;
 	ZeroMemory(&data_3, sizeof(D3D11_SUBRESOURCE_DATA));
-	data_3.pSysMem = line_points;
+	data_3.pSysMem = pointLines;
 
 	device->CreateBuffer(&line_vbuffer, &data_3, &vertexBufferLine.p);
 	
@@ -270,6 +292,19 @@ RTA_PROJECT::RTA_PROJECT(HINSTANCE hinst, WNDPROC proc)
 	idata1.pSysMem = cube_indicies;
 
 	device->CreateBuffer(&cube_ibuffer, &idata1, &indexBufferCube);
+
+	D3D11_BUFFER_DESC line_ibuffer;
+	ZeroMemory(&line_ibuffer, sizeof(D3D11_BUFFER_DESC));
+	line_ibuffer.Usage = D3D11_USAGE_IMMUTABLE;
+	line_ibuffer.ByteWidth = sizeof(UINT) * import.skeleton.joints.size();
+	line_ibuffer.BindFlags = D3D11_BIND_INDEX_BUFFER;
+	line_ibuffer.StructureByteStride = sizeof(UINT);
+
+	D3D11_SUBRESOURCE_DATA idata2;
+	ZeroMemory(&idata2, sizeof(D3D11_SUBRESOURCE_DATA));
+	idata2.pSysMem = import.skeleton.joints.data();
+
+	device->CreateBuffer(&cube_ibuffer, &idata2, &indexBufferLine);
 
 #pragma endregion
 
@@ -304,6 +339,7 @@ RTA_PROJECT::RTA_PROJECT(HINSTANCE hinst, WNDPROC proc)
 	device->CreatePixelShader(RTA_PS, sizeof(RTA_PS), nullptr, &pShader.p);
 
 	device->CreateVertexShader(Instance_VS, sizeof(Instance_VS), nullptr, &vShaderInstance.p);
+	device->CreateVertexShader(Instance_lines_VS, sizeof(Instance_lines_VS), nullptr, &vShaderInstanceLines.p);
 
 	device->CreateVertexShader(Lines_VS, sizeof(Lines_VS), nullptr, &vShader1.p);
 	device->CreatePixelShader(Lines_PS, sizeof(Lines_PS), nullptr, &pShader1.p);
@@ -324,7 +360,6 @@ RTA_PROJECT::RTA_PROJECT(HINSTANCE hinst, WNDPROC proc)
 	};
 
 	device->CreateInputLayout(line_Layout, ARRAYSIZE(line_Layout), Lines_VS, sizeof(Lines_VS), &input1.p);
-
 
 #pragma endregion
 
@@ -373,6 +408,17 @@ RTA_PROJECT::RTA_PROJECT(HINSTANCE hinst, WNDPROC proc)
 
 	device->CreateBuffer(&cbufferInstance, NULL, &constantBufferInstance.p);
 
+	D3D11_BUFFER_DESC cbufferInstanceLines;
+	ZeroMemory(&cbufferInstanceLines, sizeof(D3D11_BUFFER_DESC));
+
+	cbufferInstanceLines.ByteWidth = sizeof(lines);
+	cbufferInstanceLines.Usage = D3D11_USAGE_DYNAMIC;
+	cbufferInstanceLines.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
+	cbufferInstanceLines.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
+	cbufferInstanceLines.StructureByteStride = sizeof(DirectX::XMMATRIX);
+
+	device->CreateBuffer(&cbufferInstanceLines, NULL, &constantBufferInstanceLine.p);
+
 #pragma endregion
 
 #pragma region Sampler
@@ -391,9 +437,7 @@ RTA_PROJECT::RTA_PROJECT(HINSTANCE hinst, WNDPROC proc)
 
 #pragma region Camera
 
-	model.worldMatrix = DirectX::XMMatrixTranslation(0.0f, 0.0f, 0.0f);
-
-	UINT jointsCount = import.skeleton.joints.size();
+	model.worldMatrix = DirectX::XMMatrixTranslation(0.0f, 0.0f, 75.0f);
 
 	for (UINT i = 0; i < jointsCount; i++)
 	{
@@ -403,34 +447,24 @@ RTA_PROJECT::RTA_PROJECT(HINSTANCE hinst, WNDPROC proc)
 			continue;
 		}
 		clones[i] = ConvertFBX_DX11(import.skeleton.joints[i].animation->globalTransform);
-		//temp = DirectX::XMMatrixTranspose(clones[i]);
 		temp = clones[i];
 		clones[i] = cube.worldMatrix = DirectX::XMMatrixTranslation(temp.r[3].m128_f32[0], temp.r[3].m128_f32[1], temp.r[3].m128_f32[2]);
 	}
 
-	/*temp = ConvertFBX_DX11(import.skeleton.joints[2].animation->globalTransform);
-
-	DirectX::XMMatrixTranspose(temp);*/
-
-
 #pragma region Lines
-	UINT pointCount = import.skeleton.joints.size();
 
-	for (UINT i = 0; i < pointCount; i++)
+	for (UINT k = 0; k < jointsCount; k++)
 	{
-		if (!import.skeleton.joints[i].animation)
+		if (!import.skeleton.joints[k].animation)
 		{
-			line_points[i] = DirectX::XMMatrixIdentity();
+			lines[k] = DirectX::XMMatrixIdentity();
 			continue;
 		}
-		line_points[i] = ConvertFBX_DX11(import.skeleton.joints[i].animation->globalTransform);
-		//temp = DirectX::XMMatrixTranspose(clones[i]);
-		temp = line_points[i];
-		line_points[i] = lines.worldMatrix = DirectX::XMMatrixTranslation(temp.r[3].m128_f32[0], temp.r[3].m128_f32[1], temp.r[3].m128_f32[2]);
+		lines[k] = ConvertFBX_DX11(import.skeleton.joints[k].animation->globalTransform);
+		temp = lines[k];
+		lines[k] = line.worldMatrix = DirectX::XMMatrixTranslation(temp.r[3].m128_f32[0], temp.r[3].m128_f32[1], temp.r[3].m128_f32[2]);
 	}
 
-
-	lines.worldMatrix = 	
 #pragma endregion
 
 	camera.viewMatrix = DirectX::XMMatrixIdentity();
@@ -468,6 +502,7 @@ bool RTA_PROJECT::Run()
 	deviceContext->VSSetConstantBuffers(0, 1, &constantBufferObj.p);
 	deviceContext->VSSetConstantBuffers(1, 1, &constantBufferScene.p);
 	deviceContext->VSSetConstantBuffers(2, 1, &constantBufferInstance.p);
+	deviceContext->VSSetConstantBuffers(3, 1, &constantBufferInstanceLine.p);
 
 	deviceContext->PSSetConstantBuffers(0, 1, &constantBufferDirectional.p);
 
@@ -484,6 +519,8 @@ bool RTA_PROJECT::Run()
 	deviceContext->RSSetViewports(1, &viewport);
 
 #pragma region Teddy
+
+	
 	D3D11_MAPPED_SUBRESOURCE map;
 	deviceContext->Map(constantBufferObj, 0, D3D11_MAP_WRITE_DISCARD, 0, &map);
 	memcpy(map.pData, &model, sizeof(OBJECT));
@@ -502,26 +539,12 @@ bool RTA_PROJECT::Run()
 	deviceContext->IASetInputLayout(input);
 	
 	deviceContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+
+	//deviceContext->DrawIndexed(import.uniqueIndicies.size(), 0, 0);
 	
-	deviceContext->DrawIndexed(import.uniqueIndicies.size(), 0, 0);
 #pragma endregion
 
-#pragma region Line
-	D3D11_MAPPED_SUBRESOURCE map1;
-	deviceContext->Map(constantBufferObj, 0, D3D11_MAP_WRITE_DISCARD, 0, &map1);
-	memcpy(map1.pData, &lines, sizeof(OBJECT));
-	deviceContext->Unmap(constantBufferObj, 0);
-
-	UINT strideSize1 = sizeof(LINE);
-	UINT strideOffset1 = 0;
-	deviceContext->IASetVertexBuffers(0, 1, &vertexBufferLine.p, &strideSize1, &strideOffset1);
-
-	deviceContext->VSSetShader(vShader, nullptr, 0);
-	deviceContext->PSSetShader(pShader, nullptr, 0);
-	deviceContext->IASetInputLayout(input1);
-	deviceContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_LINESTRIP);
-	deviceContext->Draw(36, 0);
-#pragma endregion
+#pragma region Cubes
 
 	D3D11_MAPPED_SUBRESOURCE cloneMap;
 
@@ -541,6 +564,27 @@ bool RTA_PROJECT::Run()
 
 	deviceContext->DrawIndexedInstanced(36, 36, 0, 0, 0);
 
+#pragma endregion
+
+#pragma region Line
+
+	D3D11_MAPPED_SUBRESOURCE map1;
+	deviceContext->Map(constantBufferInstanceLine, 0, D3D11_MAP_WRITE_DISCARD, 0, &map1);
+	memcpy(map1.pData, lines, sizeof(lines));
+	deviceContext->Unmap(constantBufferInstanceLine, 0);
+
+	UINT strideSize1 = sizeof(LINE);
+	UINT strideOffset1 = 0;
+	deviceContext->IASetVertexBuffers(0, 1, &vertexBufferLine.p, &strideSize1, &strideOffset1);
+	deviceContext->IASetIndexBuffer(indexBufferLine, DXGI_FORMAT_R32_UINT, 0);
+
+	deviceContext->VSSetShader(vShaderInstanceLines, nullptr, 0);
+	deviceContext->PSSetShader(pShader1, nullptr, 0);
+	deviceContext->IASetInputLayout(input1);
+	deviceContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_LINELIST);
+	//deviceContext->DrawIndexedInstanced(36, 36, 0, 0, 0);
+
+#pragma endregion
 	swapchain->Present(0, 0);
 
 	return true;
@@ -595,7 +639,7 @@ void RTA_PROJECT::Camera_Movement()
 		DirectX::XMVECTOR temp;
 		temp.m128_f32[0] = 0;
 		temp.m128_f32[1] = 0;
-		temp.m128_f32[2] = 0.005f;
+		temp.m128_f32[2] = 0.05f;
 		temp.m128_f32[3] = camera.viewMatrix.r[3].m128_f32[3];
 
 		camera.viewMatrix = XMMatrixMultiply(DirectX::XMMatrixTranslationFromVector(temp), camera.viewMatrix);
@@ -606,7 +650,7 @@ void RTA_PROJECT::Camera_Movement()
 		DirectX::XMVECTOR temp;
 		temp.m128_f32[0] = 0;
 		temp.m128_f32[1] = 0;
-		temp.m128_f32[2] = -0.005f;
+		temp.m128_f32[2] = -0.05f;
 		temp.m128_f32[3] = camera.viewMatrix.r[3].m128_f32[3];
 
 		camera.viewMatrix = XMMatrixMultiply(DirectX::XMMatrixTranslationFromVector(temp), camera.viewMatrix);
@@ -615,7 +659,7 @@ void RTA_PROJECT::Camera_Movement()
 	if (GetAsyncKeyState('A'))
 	{
 		DirectX::XMVECTOR temp;
-		temp.m128_f32[0] = -0.005f;
+		temp.m128_f32[0] = -0.05f;
 		temp.m128_f32[1] = 0;
 		temp.m128_f32[2] = 0;
 		temp.m128_f32[3] = camera.viewMatrix.r[3].m128_f32[3];
@@ -626,7 +670,7 @@ void RTA_PROJECT::Camera_Movement()
 	if (GetAsyncKeyState('D'))
 	{
 		DirectX::XMVECTOR temp;
-		temp.m128_f32[0] = 0.005f;
+		temp.m128_f32[0] = 0.05f;
 		temp.m128_f32[1] = 0;
 		temp.m128_f32[2] = 0;
 		temp.m128_f32[3] = camera.viewMatrix.r[3].m128_f32[3];

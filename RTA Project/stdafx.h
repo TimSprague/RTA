@@ -30,6 +30,7 @@
 #include "Lines_VS.csh"
 #include "Lines_PS.csh"
 #include "Instance_VS.csh"
+#include "Instance_lines_VS.csh"
 
 
 #define _CRTDBG_MAP_ALLOC
