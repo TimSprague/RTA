@@ -1,5 +1,5 @@
 #include "Importer.h"
-
+#include "Interpolator.h"
 Importer::Importer()
 {
 
@@ -92,7 +92,8 @@ void Importer::ImportPolygons(FbxNode* inNode)
 			
 		}
 	}
-
+	/*Interpolator temp;
+	temp.Process(&mAnimation);*/
 }
 
 void Importer::ImportFile(string _filename)
@@ -139,7 +140,7 @@ void Importer::ImportFile(string _filename)
 		}
 		ImportPolygons(scene->GetRootNode()->GetChild(i));
 	}
-	FileSave(_filename + ".bin");
+	//FileSave(_filename + ".bin");
 
 }
 
@@ -164,7 +165,7 @@ unsigned int Importer::FindJointUsingName(string inString)
 
 	for (unsigned int i = 0; i < numBones; i++)
 	{
-		//FbxCluster* currCluster = currSkin->GetCluster(i);
+		
 		string name = skeleton.joints[i].name.c_str();
 		if (strcmp(name.c_str(), inString.c_str()) == 0)
 			return i;
@@ -178,7 +179,6 @@ void Importer::ProcessJointAndAnimation(FbxNode* inNode, FbxMesh* inMesh)
 {
 	FbxMesh* currmesh = inMesh;
 	unsigned int numDeformers = currmesh->GetDeformerCount();
-
 	FbxAMatrix geomTransform = GetGeometryTransformation(inNode);
 
 	for (unsigned int deformerIndex = 0; deformerIndex < numDeformers; deformerIndex++)
@@ -211,6 +211,7 @@ void Importer::ProcessJointAndAnimation(FbxNode* inNode, FbxMesh* inMesh)
 
 					for (int j = 0; j < 4; j++)
 					{
+						// if it is empty fill it in with the next index and weight
 						if (currBlending.blendingIndex[j] == -1)
 						{
 							currBlending.blendingIndex[j] = currJointIndex;
@@ -220,24 +221,36 @@ void Importer::ProcessJointAndAnimation(FbxNode* inNode, FbxMesh* inMesh)
 
 				controlPoints[currCluster->GetControlPointIndices()[i]].blendingInfo.push_back(currBlending);
 			}
+
 			FbxScene* currScene = inNode->GetScene();
 			FbxAnimStack* currAnimStack = currScene->GetSrcObject<FbxAnimStack>(0);
 			FbxString animStackName = currAnimStack->GetName();
+			mAnimationName = animStackName.Buffer();
 			FbxTakeInfo* takInfo = currScene->GetTakeInfo(animStackName);
 			FbxTime start = takInfo->mLocalTimeSpan.GetStart();
 			FbxTime end = takInfo->mLocalTimeSpan.GetStop();
-			mAnimationName = animStackName;
 			mAnimationLength = end.GetFrameCount(FbxTime::eFrames24) - start.GetFrameCount(FbxTime::eFrames24) + 1;
 
 			KeyFrame** currAnim = &skeleton.joints[currJointIndex].animation;
+			mAnimation.name = mAnimationName;
+			mAnimation.duration = (float)end.GetFrameCount(FbxTime::eFrames24);
+
 			for (FbxLongLong i = start.GetFrameCount(FbxTime::eFrames24); i < end.GetFrameCount(FbxTime::eFrames24); i++)
 			{
+				// get current time between the frams
 				FbxTime currTime;
 				currTime.SetFrame(i, FbxTime::eFrames24);
+				// create a new keyframe for the list
 				*currAnim = new KeyFrame();
+				// set the identifier for later reference
 				(*currAnim)->FrameNum = i;
+				// set the offset for the transform matrix
 				FbxAMatrix currTransformOffset = inNode->EvaluateGlobalTransform(currTime) * geomTransform;
 				(*currAnim)->globalTransform = currTransformOffset.Inverse() * currCluster->GetLink()->EvaluateGlobalTransform(currTime);
+				// store animation in the keyframe
+				mAnimation.keyframes[i] = **currAnim;
+				mAnimation.keyframes[i].next = &mAnimation.keyframes[i+1];
+				// position to the next node in the list, wait to be written
 				currAnim = &((*currAnim)->next);
 			}
 
@@ -249,6 +262,7 @@ void Importer::ProcessJointAndAnimation(FbxNode* inNode, FbxMesh* inMesh)
 	{
 		NormalizeVectors(totalVertexes[i].weight);
 	}
+
 }
 
 void Importer::NormalizeVectors(float* inVert)
@@ -259,6 +273,7 @@ void Importer::NormalizeVectors(float* inVert)
 
 	inVert[0] /= sum; inVert[1] /= sum; inVert[2] /= sum; inVert[3] /= sum;
 
+	// make sure that the total doesn't span over 1
 	inVert[3] = 1.0f -( inVert[0] - inVert[1] - inVert[2]);
 
 }
@@ -266,6 +281,7 @@ void Importer::NormalizeVectors(float* inVert)
 void Importer::ProcessSkeletonHierarchy(FbxNode* inNode)
 {
 	int count = inNode->GetChildCount();
+	FbxMesh* currmesh = inNode->GetMesh();
 	if (count == 0)
 	{
 		return;
@@ -286,7 +302,6 @@ void Importer::ProcessSkeletonHierarchyRecursively(FbxNode* inNode, int inDepth,
 		Joint tempJoint;
 		tempJoint.parentIndex = inParentIndex;
 		tempJoint.name = inNode->GetName();
-
 		skeleton.joints.push_back(tempJoint);
 	}
 
