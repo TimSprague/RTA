@@ -8,7 +8,7 @@
 
 class Importer
 {
-
+	friend class Interpolator;
 public:
 	struct Vertex
 	{
@@ -73,6 +73,13 @@ public:
 		vector<BlendingIndexWeightPair> blendingInfo;
 	};
 
+	struct Animation
+	{
+		string name;
+		float duration;
+		KeyFrame keyframes[60];
+	};
+
 	vector<CtrlPoint> controlPoints;
 	vector<Vertex> totalVertexes;
 	vector<Vertex> uniqueVertices;
@@ -80,6 +87,7 @@ public:
 	Skeleton skeleton;
 	int polygonCount;
 	vector<FbxMesh*> meshes;
+	Animation mAnimation;
 	FbxString mAnimationName;
 	FbxTime mAnimationLength;
 

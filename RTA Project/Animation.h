@@ -8,8 +8,10 @@ public:
 	Animation();
 	~Animation();
 private:
+
+	string m_name;
 	float duration;
 
-	Importer::Vertex vertices[];
+	Importer::KeyFrame keyframes[];
 };
 

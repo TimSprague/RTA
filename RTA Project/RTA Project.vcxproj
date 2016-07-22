@@ -175,6 +175,7 @@
     <ClCompile Include="Animation.cpp" />
     <ClCompile Include="DDSTextureLoader.cpp" />
     <ClCompile Include="Importer.cpp" />
+    <ClCompile Include="Interpolator.cpp" />
     <ClCompile Include="Keyframe.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="XTime.cpp" />
@@ -184,6 +185,7 @@
     <ClInclude Include="DDSTextureLoader.h" />
     <ClInclude Include="defines.h" />
     <ClInclude Include="Importer.h" />
+    <ClInclude Include="Interpolator.h" />
     <ClInclude Include="Keyframe.h" />
     <ClInclude Include="stdafx.h" />
     <ClInclude Include="XTime.h" />
