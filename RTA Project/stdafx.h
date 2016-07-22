@@ -4,6 +4,8 @@
 // are changed infrequently
 #include <iostream>
 #include <Windows.h>
+#include <cmath>
+#include <math.h>
 #include <stdio.h>
 #include <tchar.h>
 #include <cstring>
@@ -17,6 +19,7 @@
 #include <atlbase.h>
 #include <DirectXMath.h>
 #include <d3d11.h>
+#include <fbxsdk.h>
 #include "defines.h"
 #include "DDSTextureLoader.h"
 #include "XTime.h"
@@ -24,6 +27,9 @@
 //Shaders
 #include "RTA_VS.csh"
 #include "RTA_PS.csh"
+#include "Lines_VS.csh"
+#include "Lines_PS.csh"
+#include "Instance_VS.csh"
 
 
 #define _CRTDBG_MAP_ALLOC

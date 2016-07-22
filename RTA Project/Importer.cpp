@@ -154,12 +154,12 @@ FbxAMatrix Importer::GetGeometryTransformation(FbxNode* inNode)
 
 unsigned int Importer::FindJointUsingName(string inString)
 {
-	// looping through the wrong thing to find the name, maybe find out which CLUSTER we are
-	// and return that index?
 	if (inString == "Root_J")
 	{
 		return 0;
 	}
+	// looping through the wrong thing to find the name, maybe find out which CLUSTER we are
+	
 	unsigned int numBones = skeleton.joints.size();
 
 	for (unsigned int i = 0; i < numBones; i++)
@@ -170,7 +170,7 @@ unsigned int Importer::FindJointUsingName(string inString)
 			return i;
 	}
 
-
+	
 	return UINT32_MAX;
 }
 
@@ -302,6 +302,8 @@ void Importer::ProcessSkeletonHierarchyRecursively(FbxNode* inNode, int inDepth,
 		tempJoint.name = inNode->GetName();
 		skeleton.joints.push_back(tempJoint);
 	}
+
+	int test = inNode->GetChildCount();
 	for (int i = 0; i < inNode->GetChildCount(); i++)
 	{
 		ProcessSkeletonHierarchyRecursively(inNode->GetChild(i), inDepth + 1, (int)skeleton.joints.size(), index);
