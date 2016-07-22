@@ -1,6 +1,5 @@
 #pragma once
 #include "stdafx.h"
-
 #define BACKBUFFER_WIDTH	1280
 #define BACKBUFFER_HEIGHT	800
 #define PIXELS ((BACKBUFFER_WIDTH)*(BACKBUFFER_HEIGHT))
@@ -31,10 +30,20 @@ struct DIRECTIONAL_LIGHT
 	DirectX::XMMATRIX directionalMatrix;
 };
 
-struct VERTEX
+struct CUBE
 {
-	float vertex[4];
+	DirectX::XMVECTOR pos;
+	DirectX::XMVECTOR rgba;
 };
+
+struct LINE
+{
+	DirectX::XMVECTOR pos;
+	DirectX::XMVECTOR rgba;
+};
+
+
+
 
 
 

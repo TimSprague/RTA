@@ -154,30 +154,23 @@ FbxAMatrix Importer::GetGeometryTransformation(FbxNode* inNode)
 
 unsigned int Importer::FindJointUsingName(string inString)
 {
-	// looping through the wrong thing to find the name, maybe find out which CLUSTER we are
-	// and return that index?
-	FbxMesh* currmesh = meshes[0];
-	unsigned int numDeformers = currmesh->GetDeformerCount();
-	FbxSkin* currSkin = reinterpret_cast<FbxSkin*>(currmesh->GetDeformer(0, FbxDeformer::eSkin));
-	unsigned int numClusters = currSkin->GetClusterCount();
-
-	for (unsigned int i = 0; i < numClusters; i++)
+	if (inString == "Root_J")
 	{
-		FbxCluster* currCluster = currSkin->GetCluster(i);
-		string name = currCluster->GetLink()->GetName();
+		return 0;
+	}
+	// looping through the wrong thing to find the name, maybe find out which CLUSTER we are
+	
+	unsigned int numBones = skeleton.joints.size();
+
+	for (unsigned int i = 0; i < numBones; i++)
+	{
+		//FbxCluster* currCluster = currSkin->GetCluster(i);
+		string name = skeleton.joints[i].name.c_str();
 		if (strcmp(name.c_str(), inString.c_str()) == 0)
 			return i;
 	}
 
-	//vector<Joint>::iterator iter;
-	//for (iter = skeleton.joints.begin(); iter != skeleton.joints.end(); iter++)
-	//{
-	//	for (unsigned int i = 0; i < skeleton.joints.size(); i++)
-	//	{
-	//		if (strcmp( skeleton.joints[i].name.c_str(), inString.c_str()) == 0)
-	//			return i;
-	//	}
-	//}
+	
 	return UINT32_MAX;
 }
 
@@ -293,8 +286,11 @@ void Importer::ProcessSkeletonHierarchyRecursively(FbxNode* inNode, int inDepth,
 		Joint tempJoint;
 		tempJoint.parentIndex = inParentIndex;
 		tempJoint.name = inNode->GetName();
+
 		skeleton.joints.push_back(tempJoint);
 	}
+
+	int test = inNode->GetChildCount();
 	for (int i = 0; i < inNode->GetChildCount(); i++)
 	{
 		ProcessSkeletonHierarchyRecursively(inNode->GetChild(i), inDepth + 1, (int)skeleton.joints.size(), index);

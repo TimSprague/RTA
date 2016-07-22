@@ -2,7 +2,7 @@
 
 struct V_IN
 {
-	float3 posH : POSITION;
+	float3 posL : POSITION;
 	float2 uv : UV;
 	float3 normal : NORMALS;
 };
@@ -26,22 +26,26 @@ cbuffer SCENE : register(b1)
 	float4x4 projectionMatrix;
 }
 
-V_OUT main(V_IN input) 
+cbuffer CLONES : register(b2)
+{
+	float4x4 array[36];
+}
+
+V_OUT main(V_IN input, uint id:SV_InstanceID)
 {
 	V_OUT output = (V_OUT)0;
 
-	// Hacky scaling attempt
-	float4 localH = float4(input.posH.xyz, 1);
+	float4 localH = float4(input.posL.xyz, 1);
 
 	output.worldPos = localH.xyzw;
 
-	localH = mul(localH, worldMatrix);
+	localH = mul(localH, array[id]);
 	localH = mul(localH, viewMatrix);
 	localH = mul(localH, projectionMatrix);
 
 	output.posH = localH;
 	output.uv = input.uv;
-	output.normal = mul(float4(input.normal.xyz, 0), worldMatrix);
+	output.normal = mul(float4(input.normal.xyz, 0), array[id]);
 
 	return output;
 }

@@ -3,7 +3,7 @@
 
 float aspectRatio = (float)(BACKBUFFER_WIDTH) / (BACKBUFFER_HEIGHT);
 float zNear = 0.1f;
-float zFar = 100.0f;
+float zFar = 1000.0f;
 float zBuffer[PIXELS];
 UINT Raster[PIXELS];
 
@@ -21,13 +21,13 @@ class RTA_PROJECT
 	CComPtr<IDXGISwapChain> swapchain;
 	D3D11_VIEWPORT viewport;
 
-	CComPtr<ID3D11Buffer> vertexBuffer, vertexBufferPlane, vertexBufferSkeleton, indexBuffer, indexBufferPlane, indexBufferSkeleton, constantBufferObj, constantBufferScene, constantBufferDirectional, constantBufferSkeleton;
+	CComPtr<ID3D11Buffer> vertexBuffer, vertexBufferLine, vertexBufferCube, indexBuffer, indexBufferLine, indexBufferCube, constantBufferObj, constantBufferScene, constantBufferDirectional, constantBufferCube, constantBufferLine, constantBufferInstance;
 
-	CComPtr<ID3D11InputLayout> input;
+	CComPtr<ID3D11InputLayout> input, input1;
 
-	CComPtr<ID3D11VertexShader> vShader;
+	CComPtr<ID3D11VertexShader> vShader, vShader1, vShaderInstance;
 
-	CComPtr<ID3D11PixelShader> pShader;
+	CComPtr<ID3D11PixelShader> pShader, pShader1;
 
 	CComPtr<ID3D11DepthStencilView> dsView;
 
@@ -41,7 +41,7 @@ class RTA_PROJECT
 
 	CComPtr<ID3D11Resource> texture;
 
-	OBJECT model, plane, bones;
+	OBJECT model, lines, cube;
 
 	SCENE camera;
 
@@ -53,7 +53,10 @@ class RTA_PROJECT
 
 	XTime timer;
 
-	
+	DirectX::XMMATRIX temp = DirectX::XMMatrixIdentity();
+	DirectX::XMMATRIX clones[36];
+	DirectX::XMMATRIX line_points[36];
+
 
 public:
 
@@ -62,17 +65,16 @@ public:
 	bool ShutDown();
 	void Camera_Movement();
 	void Sun();
+	DirectX::XMMATRIX ConvertFBX_DX11(FbxAMatrix _m);
 
-	/*const VERTEX Skeleton[]
-	{
-		{}
-	}*/
 };
+
 
 RTA_PROJECT::RTA_PROJECT(HINSTANCE hinst, WNDPROC proc)
 {
 	import.ImportFile("Teddy_Idle.fbx");
-
+	
+#pragma region Window
 	application = hinst;
 	appWndProc = proc;
 
@@ -95,6 +97,7 @@ RTA_PROJECT::RTA_PROJECT(HINSTANCE hinst, WNDPROC proc)
 		NULL, NULL, application, this);
 
 	ShowWindow(window, SW_SHOW);
+#pragma endregion
 
 #pragma region Swap Chain
 	DXGI_SWAP_CHAIN_DESC swap_chain;
@@ -135,6 +138,68 @@ RTA_PROJECT::RTA_PROJECT(HINSTANCE hinst, WNDPROC proc)
 	viewport.MaxDepth = 1;
 #pragma endregion
 
+#pragma region Cube
+	CUBE square[8];
+
+	square[0].pos.m128_f32[0] = -1.0f;
+	square[0].pos.m128_f32[1] = 1.0f;
+	square[0].pos.m128_f32[2] = -1.0f;
+	square[0].pos.m128_f32[3] = 1.0f;
+
+	square[1].pos.m128_f32[0] = 1.0f;
+	square[1].pos.m128_f32[1] = 1.0f;
+	square[1].pos.m128_f32[2] = -1.0f;
+	square[1].pos.m128_f32[3] = 1.0f;
+	
+	square[2].pos.m128_f32[0] = -1.0f;
+	square[2].pos.m128_f32[1] = -1.0f;
+	square[2].pos.m128_f32[2] = -1.0f;
+	square[2].pos.m128_f32[3] = 1.0f;
+
+	square[3].pos.m128_f32[0] = 1.0f;
+	square[3].pos.m128_f32[1] = -1.0f;
+	square[3].pos.m128_f32[2] = -1.0f;
+	square[3].pos.m128_f32[3] = 1.0f;
+
+	square[4].pos.m128_f32[0] = -1.0f;
+	square[4].pos.m128_f32[1] = 1.0f;
+	square[4].pos.m128_f32[2] = 1.0f;
+	square[4].pos.m128_f32[3] = 1.0f;
+
+	square[5].pos.m128_f32[0] = 1.0f;
+	square[5].pos.m128_f32[1] = 1.0f;
+	square[5].pos.m128_f32[2] = 1.0f;
+	square[5].pos.m128_f32[3] = 1.0f;
+
+	square[6].pos.m128_f32[0] = -1.0f;
+	square[6].pos.m128_f32[1] = -1.0f;
+	square[6].pos.m128_f32[2] = 1.0f;
+	square[6].pos.m128_f32[3] = 1.0f;
+
+	square[7].pos.m128_f32[0] = 1.0f;
+	square[7].pos.m128_f32[1] = -1.0f;
+	square[7].pos.m128_f32[2] = 1.0f;
+	square[7].pos.m128_f32[3] = 1.0f;
+
+	UINT cube_indicies[36] =
+	{
+		0,1,2,	// side 1
+		2,1,3,
+		4,0,6,	// side 2
+		6,0,2, 
+		7,5,6,	// side 3
+		6,5,4,
+		3,1,7,	// side 4
+		7,1,5,
+		4,5,0,	// side 5
+		0,5,1,
+		3,7,2,	// side 6
+		2,7,6,
+	};
+
+#pragma endregion
+
+
 #pragma region Vertex buffers
 	// Vertex buffer
 	D3D11_BUFFER_DESC model_vbuffer;
@@ -150,18 +215,31 @@ RTA_PROJECT::RTA_PROJECT(HINSTANCE hinst, WNDPROC proc)
 
 	device->CreateBuffer(&model_vbuffer, &data_1, &vertexBuffer.p);
 
-	D3D11_BUFFER_DESC skeleton_vbuffer;
-	ZeroMemory(&skeleton_vbuffer, sizeof(D3D11_BUFFER_DESC));
-	skeleton_vbuffer.ByteWidth = sizeof(Importer::Skeleton::joints[0].animation->globalTransform) * import.skeleton.joints.size();
-	skeleton_vbuffer.Usage = D3D11_USAGE_IMMUTABLE;
-	skeleton_vbuffer.BindFlags = D3D11_BIND_VERTEX_BUFFER;
-	skeleton_vbuffer.StructureByteStride = sizeof(Importer::Skeleton::joints[0].animation->globalTransform);
+	D3D11_BUFFER_DESC cube_vbuffer;
+	ZeroMemory(&cube_vbuffer, sizeof(D3D11_BUFFER_DESC));
+	cube_vbuffer.ByteWidth = sizeof(square);
+	cube_vbuffer.Usage = D3D11_USAGE_IMMUTABLE;
+	cube_vbuffer.BindFlags = D3D11_BIND_VERTEX_BUFFER;
+	cube_vbuffer.StructureByteStride = sizeof(CUBE);
 
 	D3D11_SUBRESOURCE_DATA data_2;
 	ZeroMemory(&data_2, sizeof(D3D11_SUBRESOURCE_DATA));
-	data_2.pSysMem = import.skeleton.joints.data();
+	data_2.pSysMem = square;
 
-	device->CreateBuffer(&skeleton_vbuffer, &data_2, &vertexBufferSkeleton.p);
+	device->CreateBuffer(&cube_vbuffer, &data_2, &vertexBufferCube.p);
+
+	D3D11_BUFFER_DESC line_vbuffer;
+	ZeroMemory(&line_vbuffer, sizeof(D3D11_BUFFER_DESC));
+	line_vbuffer.ByteWidth = sizeof(LINE) * 36;
+	line_vbuffer.Usage = D3D11_USAGE_IMMUTABLE;
+	line_vbuffer.BindFlags = D3D11_BIND_VERTEX_BUFFER;
+	line_vbuffer.StructureByteStride = sizeof(LINE);
+
+	D3D11_SUBRESOURCE_DATA data_3;
+	ZeroMemory(&data_3, sizeof(D3D11_SUBRESOURCE_DATA));
+	data_3.pSysMem = line_points;
+
+	device->CreateBuffer(&line_vbuffer, &data_3, &vertexBufferLine.p);
 	
 #pragma endregion
 
@@ -180,18 +258,18 @@ RTA_PROJECT::RTA_PROJECT(HINSTANCE hinst, WNDPROC proc)
 
 	device->CreateBuffer(&model_ibuffer, &idata, &indexBuffer);
 
-	D3D11_BUFFER_DESC skeleton_ibuffer;
-	ZeroMemory(&skeleton_ibuffer, sizeof(D3D11_BUFFER_DESC));
-	skeleton_ibuffer.Usage = D3D11_USAGE_IMMUTABLE;
-	skeleton_ibuffer.ByteWidth = sizeof(UINT) * import.skeleton.joints.size();
-	skeleton_ibuffer.BindFlags = D3D11_BIND_INDEX_BUFFER;
-	skeleton_ibuffer.StructureByteStride = sizeof(UINT);
+	D3D11_BUFFER_DESC cube_ibuffer;
+	ZeroMemory(&cube_ibuffer, sizeof(D3D11_BUFFER_DESC));
+	cube_ibuffer.Usage = D3D11_USAGE_IMMUTABLE;
+	cube_ibuffer.ByteWidth = sizeof(cube_indicies);
+	cube_ibuffer.BindFlags = D3D11_BIND_INDEX_BUFFER;
+	cube_ibuffer.StructureByteStride = sizeof(UINT);
 
 	D3D11_SUBRESOURCE_DATA idata1;
 	ZeroMemory(&idata1, sizeof(D3D11_SUBRESOURCE_DATA));
-	idata1.pSysMem = import.skeleton.joints.data();
+	idata1.pSysMem = cube_indicies;
 
-	device->CreateBuffer(&skeleton_ibuffer, &idata1, &indexBufferSkeleton);
+	device->CreateBuffer(&cube_ibuffer, &idata1, &indexBufferCube);
 
 #pragma endregion
 
@@ -225,6 +303,11 @@ RTA_PROJECT::RTA_PROJECT(HINSTANCE hinst, WNDPROC proc)
 	device->CreateVertexShader(RTA_VS, sizeof(RTA_VS), nullptr, &vShader.p);
 	device->CreatePixelShader(RTA_PS, sizeof(RTA_PS), nullptr, &pShader.p);
 
+	device->CreateVertexShader(Instance_VS, sizeof(Instance_VS), nullptr, &vShaderInstance.p);
+
+	device->CreateVertexShader(Lines_VS, sizeof(Lines_VS), nullptr, &vShader1.p);
+	device->CreatePixelShader(Lines_PS, sizeof(Lines_PS), nullptr, &pShader1.p);
+
 	D3D11_INPUT_ELEMENT_DESC model_Layout[] =
 	{
 		{ "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 },
@@ -233,6 +316,16 @@ RTA_PROJECT::RTA_PROJECT(HINSTANCE hinst, WNDPROC proc)
 	};
 
 	device->CreateInputLayout(model_Layout, ARRAYSIZE(model_Layout), RTA_VS, sizeof(RTA_VS), &input.p);
+
+	D3D11_INPUT_ELEMENT_DESC line_Layout[] =
+	{
+		{ "POSITION", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 },
+		{ "COLOR", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 }
+	};
+
+	device->CreateInputLayout(line_Layout, ARRAYSIZE(line_Layout), Lines_VS, sizeof(Lines_VS), &input1.p);
+
+
 #pragma endregion
 
 #pragma region Constant Buffers
@@ -269,16 +362,16 @@ RTA_PROJECT::RTA_PROJECT(HINSTANCE hinst, WNDPROC proc)
 
 	device->CreateBuffer(&cbufferDirectional, NULL, &constantBufferDirectional.p);
 
-	D3D11_BUFFER_DESC cbufferSkeleton;
-	ZeroMemory(&cbufferSkeleton, sizeof(D3D11_BUFFER_DESC));
+	D3D11_BUFFER_DESC cbufferInstance;
+	ZeroMemory(&cbufferInstance, sizeof(D3D11_BUFFER_DESC));
 
-	cbufferSkeleton.ByteWidth = sizeof(FbxAMatrix);
-	cbufferSkeleton.Usage = D3D11_USAGE_DYNAMIC;
-	cbufferSkeleton.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
-	cbufferSkeleton.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
-	cbufferSkeleton.StructureByteStride = sizeof(double);
+	cbufferInstance.ByteWidth = sizeof(clones);
+	cbufferInstance.Usage = D3D11_USAGE_DYNAMIC;
+	cbufferInstance.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
+	cbufferInstance.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
+	cbufferInstance.StructureByteStride = sizeof(DirectX::XMMATRIX);
 
-	device->CreateBuffer(&cbufferSkeleton, NULL, &constantBufferSkeleton.p);
+	device->CreateBuffer(&cbufferInstance, NULL, &constantBufferInstance.p);
 
 #pragma endregion
 
@@ -297,11 +390,51 @@ RTA_PROJECT::RTA_PROJECT(HINSTANCE hinst, WNDPROC proc)
 #pragma endregion
 
 #pragma region Camera
-	model.worldMatrix = DirectX::XMMatrixTranslation(0.0f, 0.0f, 3.0f);
-	bones.worldMatrix = DirectX::XMMatrixTranslation(5.0f, 0.0f, 3.0f);
+
+	model.worldMatrix = DirectX::XMMatrixTranslation(0.0f, 0.0f, 0.0f);
+
+	UINT jointsCount = import.skeleton.joints.size();
+
+	for (UINT i = 0; i < jointsCount; i++)
+	{
+		if (!import.skeleton.joints[i].animation)
+		{
+			clones[i] = DirectX::XMMatrixIdentity();
+			continue;
+		}
+		clones[i] = ConvertFBX_DX11(import.skeleton.joints[i].animation->globalTransform);
+		//temp = DirectX::XMMatrixTranspose(clones[i]);
+		temp = clones[i];
+		clones[i] = cube.worldMatrix = DirectX::XMMatrixTranslation(temp.r[3].m128_f32[0], temp.r[3].m128_f32[1], temp.r[3].m128_f32[2]);
+	}
+
+	/*temp = ConvertFBX_DX11(import.skeleton.joints[2].animation->globalTransform);
+
+	DirectX::XMMatrixTranspose(temp);*/
+
+
+#pragma region Lines
+	UINT pointCount = import.skeleton.joints.size();
+
+	for (UINT i = 0; i < pointCount; i++)
+	{
+		if (!import.skeleton.joints[i].animation)
+		{
+			line_points[i] = DirectX::XMMatrixIdentity();
+			continue;
+		}
+		line_points[i] = ConvertFBX_DX11(import.skeleton.joints[i].animation->globalTransform);
+		//temp = DirectX::XMMatrixTranspose(clones[i]);
+		temp = line_points[i];
+		line_points[i] = lines.worldMatrix = DirectX::XMMatrixTranslation(temp.r[3].m128_f32[0], temp.r[3].m128_f32[1], temp.r[3].m128_f32[2]);
+	}
+
+
+	lines.worldMatrix = 	
+#pragma endregion
 
 	camera.viewMatrix = DirectX::XMMatrixIdentity();
-	camera.viewMatrix = XMMatrixInverse(NULL, camera.viewMatrix);
+	camera.viewMatrix = DirectX::XMMatrixInverse(NULL, camera.viewMatrix);
 	camera.projMatrix = DirectX::XMMatrixPerspectiveFovLH(DirectX::XMConvertToRadians(65), aspectRatio, zNear, zFar);
 
 	// Direction light
@@ -334,7 +467,7 @@ bool RTA_PROJECT::Run()
 
 	deviceContext->VSSetConstantBuffers(0, 1, &constantBufferObj.p);
 	deviceContext->VSSetConstantBuffers(1, 1, &constantBufferScene.p);
-	//deviceContext->VSSetConstantBuffers(2, 1, &constantBufferSkeleton.p);
+	deviceContext->VSSetConstantBuffers(2, 1, &constantBufferInstance.p);
 
 	deviceContext->PSSetConstantBuffers(0, 1, &constantBufferDirectional.p);
 
@@ -369,31 +502,45 @@ bool RTA_PROJECT::Run()
 	deviceContext->IASetInputLayout(input);
 	
 	deviceContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-	//deviceContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_POINTLIST);
-
 	
 	deviceContext->DrawIndexed(import.uniqueIndicies.size(), 0, 0);
-	//deviceContext->Draw(import.totalVertexes.size(), 0);
 #pragma endregion
 
-#pragma region Skeleton
-	/*D3D11_MAPPED_SUBRESOURCE map1;
-	deviceContext->Map(constantBufferSkeleton, 0, D3D11_MAP_WRITE_DISCARD, 0, &map1);
-	memcpy(map1.pData, &bones, sizeof(OBJECT));
-	deviceContext->Unmap(constantBufferSkeleton, 0);
+#pragma region Line
+	D3D11_MAPPED_SUBRESOURCE map1;
+	deviceContext->Map(constantBufferObj, 0, D3D11_MAP_WRITE_DISCARD, 0, &map1);
+	memcpy(map1.pData, &lines, sizeof(OBJECT));
+	deviceContext->Unmap(constantBufferObj, 0);
 
-	UINT strideSize1 = sizeof(import.skeleton.joints[0].animation->globalTransform);
+	UINT strideSize1 = sizeof(LINE);
 	UINT strideOffset1 = 0;
-	deviceContext->IASetVertexBuffers(0, 1, &vertexBufferSkeleton, &strideSize1, &strideOffset1);
-	deviceContext->IASetIndexBuffer(indexBufferSkeleton, DXGI_FORMAT_R32_UINT, 0);
-
-	ID3D11ShaderResourceView* nullsrv = nullptr;
+	deviceContext->IASetVertexBuffers(0, 1, &vertexBufferLine.p, &strideSize1, &strideOffset1);
 
 	deviceContext->VSSetShader(vShader, nullptr, 0);
 	deviceContext->PSSetShader(pShader, nullptr, 0);
-	deviceContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_POINTLIST);
-	deviceContext->Draw(37, 0);*/
+	deviceContext->IASetInputLayout(input1);
+	deviceContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_LINESTRIP);
+	deviceContext->Draw(36, 0);
 #pragma endregion
+
+	D3D11_MAPPED_SUBRESOURCE cloneMap;
+
+	deviceContext->Map(constantBufferInstance, 0, D3D11_MAP_WRITE_DISCARD, 0, &cloneMap);
+	memcpy(cloneMap.pData, clones, sizeof(clones));
+	deviceContext->Unmap(constantBufferInstance, 0);
+
+	UINT strideSize2 = sizeof(CUBE);
+	UINT strideOffset2 = 0;
+	deviceContext->IASetVertexBuffers(0, 1, &vertexBufferCube.p, &strideSize2, &strideOffset2);
+	deviceContext->IASetIndexBuffer(indexBufferCube, DXGI_FORMAT_R32_UINT, 0);
+
+	deviceContext->VSSetShader(vShaderInstance, nullptr, 0);
+	deviceContext->PSSetShader(pShader, nullptr, 0);
+
+	deviceContext->IASetInputLayout(input);
+
+	deviceContext->DrawIndexedInstanced(36, 36, 0, 0, 0);
+
 	swapchain->Present(0, 0);
 
 	return true;
@@ -609,7 +756,31 @@ void RTA_PROJECT::Sun()
 	direction.directionaldir.w = sunmovement.r[3].m128_f32[3];
 }
 
-int main(int args, char**argv)
+DirectX::XMMATRIX RTA_PROJECT::ConvertFBX_DX11(FbxAMatrix _m)
 {
+	DirectX::XMMATRIX temp;
+	
+	temp.r[0].m128_f32[0] = (float)_m[0].mData[0];
+	temp.r[0].m128_f32[1] = (float)_m[0].mData[1];
+	temp.r[0].m128_f32[2] = (float)_m[0].mData[2];
+	temp.r[0].m128_f32[3] = (float)_m[0].mData[3];
+
+	temp.r[1].m128_f32[0] = (float)_m[1].mData[0];
+	temp.r[1].m128_f32[1] = (float)_m[1].mData[1];
+	temp.r[1].m128_f32[2] = (float)_m[1].mData[2];
+	temp.r[1].m128_f32[3] = (float)_m[1].mData[3];
+
+	temp.r[2].m128_f32[0] = (float)_m[2].mData[0];
+	temp.r[2].m128_f32[1] = (float)_m[2].mData[1];
+	temp.r[2].m128_f32[2] = (float)_m[2].mData[2];
+	temp.r[2].m128_f32[3] = (float)_m[2].mData[3];
+
+	temp.r[3].m128_f32[0] = (float)_m[3].mData[0];
+	temp.r[3].m128_f32[1] = (float)_m[3].mData[1];
+	temp.r[3].m128_f32[2] = (float)_m[3].mData[2];
+	temp.r[3].m128_f32[3] = (float)_m[3].mData[3];
+
+	return temp;
 
 }
+
