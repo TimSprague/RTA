@@ -1,5 +1,6 @@
 #include "stdafx.h"
 #include "Importer.h"
+#include "Interpolator.h"
 
 float aspectRatio = (float)(BACKBUFFER_WIDTH) / (BACKBUFFER_HEIGHT);
 float zNear = 0.1f;
@@ -48,6 +49,8 @@ class RTA_PROJECT
 	SCENE camera;
 
 	Importer import;
+
+	Interpolator interpolate;
 
 	DIRECTIONAL_LIGHT direction;
 
@@ -495,6 +498,8 @@ bool RTA_PROJECT::Run()
 	Camera_Movement();
 	Sun();
 	//GetCursorPos(&currPos);
+
+	//interpolate.Process(&import.mAnimation);
 
 	deviceContext->ClearRenderTargetView(rtv, clearColor);
 	deviceContext->ClearDepthStencilView(dsView, D3D11_CLEAR_DEPTH, 1, 0);

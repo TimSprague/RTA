@@ -2,7 +2,7 @@
 
 struct V_IN
 {
-	float3 posH : POSITION;
+	float3 posL : POSITION;
 	float2 uv : UV;
 	float3 normal : NORMALS;
 };
@@ -31,7 +31,7 @@ V_OUT main(V_IN input)
 	V_OUT output = (V_OUT)0;
 
 	// Hacky scaling attempt
-	float4 localH = float4(input.posH.xyz, 1);
+	float4 localH = float4(input.posL.xyz, 1);
 
 	output.worldPos = localH.xyzw;
 

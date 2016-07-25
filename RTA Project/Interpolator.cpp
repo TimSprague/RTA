@@ -10,7 +10,7 @@ void Interpolator::Process(Importer::Animation* anim)
 	animPtr = anim;
 
 	// loop through the keyframes (60 for the idle animation)
-	FbxTime totalAnimationTime;
+	FbxTime totalAnimationTime = 0;
 	for (unsigned int i = 0; i < 60; i++)
 	{
 		totalAnimationTime += (FbxLongLong)animPtr[i].duration;
