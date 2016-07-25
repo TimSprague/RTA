@@ -36,10 +36,11 @@ public:
 		string name;
 		int parentIndex;
 		FbxAMatrix globalBindposeInverse;
-		KeyFrame* animation;
+		//KeyFrame* animation;
 		FbxNode* node;
+		vector<KeyFrame> animation;
 
-		Joint() : node(nullptr), animation(nullptr)
+		Joint() : node(nullptr)//, animation(nullptr)
 		{
 			globalBindposeInverse.SetIdentity();
 			parentIndex = -1;
@@ -47,12 +48,12 @@ public:
 
 		~Joint()
 		{
-			while (animation)
-			{
-				KeyFrame* temp = animation->next;
-				delete animation;
-				animation = temp;
-			}
+			//while (animation)
+			//{
+			//	KeyFrame* temp = animation->next;
+			//	delete animation;
+			//	animation = temp;
+			//}
 		}
 	};
 
@@ -100,6 +101,7 @@ public:
 	void ProcessJointAndAnimation(FbxNode* inNode, FbxMesh* inMesh);
 	void ProcessSkeletonHierarchy(FbxNode* inNode);
 	void NormalizeVectors(float* inVert);
+	void Animate();
 	void FileSave(string _filename);
 	void FileOpen(string _filename);
 	~Importer();

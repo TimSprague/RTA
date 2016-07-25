@@ -231,9 +231,10 @@ void Importer::ProcessJointAndAnimation(FbxNode* inNode, FbxMesh* inMesh)
 			FbxTime end = takInfo->mLocalTimeSpan.GetStop();
 			mAnimationLength = end.GetFrameCount(FbxTime::eFrames24) - start.GetFrameCount(FbxTime::eFrames24) + 1;
 
-			KeyFrame** currAnim = &skeleton.joints[currJointIndex].animation;
+			//KeyFrame** currAnim = &skeleton.joints[currJointIndex].animation;
 			mAnimation.name = mAnimationName;
 			mAnimation.duration = (float)end.GetFrameCount(FbxTime::eFrames24);
+			skeleton.joints[currJointIndex].animation.resize(mAnimation.duration);
 
 			for (FbxLongLong i = start.GetFrameCount(FbxTime::eFrames24); i < end.GetFrameCount(FbxTime::eFrames24); i++)
 			{
@@ -241,17 +242,19 @@ void Importer::ProcessJointAndAnimation(FbxNode* inNode, FbxMesh* inMesh)
 				FbxTime currTime;
 				currTime.SetFrame(i, FbxTime::eFrames24);
 				// create a new keyframe for the list
-				*currAnim = new KeyFrame();
+				//*currAnim = new KeyFrame();
 				// set the identifier for later reference
-				(*currAnim)->FrameNum = i;
+				//(*currAnim)->FrameNum = i;
+				skeleton.joints[currJointIndex].animation[i].FrameNum = i;
 				// set the offset for the transform matrix
 				FbxAMatrix currTransformOffset = inNode->EvaluateGlobalTransform(currTime) * geomTransform;
-				(*currAnim)->globalTransform = currTransformOffset.Inverse() * currCluster->GetLink()->EvaluateGlobalTransform(currTime);
+				//(*currAnim)->globalTransform = currTransformOffset.Inverse() * currCluster->GetLink()->EvaluateGlobalTransform(currTime);
+				skeleton.joints[currJointIndex].animation[i].globalTransform = currTransformOffset.Inverse() * currCluster->GetLink()->EvaluateGlobalTransform(currTime);
 				// store animation in the keyframe
-				mAnimation.keyframes[i] = **currAnim;
-				mAnimation.keyframes[i].next = &mAnimation.keyframes[i+1];
+				//mAnimation.keyframes[i] = **currAnim;
+				//mAnimation.keyframes[i].next = &mAnimation.keyframes[i+1];
 				// position to the next node in the list, wait to be written
-				currAnim = &((*currAnim)->next);
+				//currAnim = &((*currAnim)->next);
 			}
 
 		}
@@ -311,7 +314,6 @@ void Importer::ProcessSkeletonHierarchyRecursively(FbxNode* inNode, int inDepth,
 		ProcessSkeletonHierarchyRecursively(inNode->GetChild(i), inDepth + 1, (int)skeleton.joints.size(), index);
 	}
 }
-
 
 void Importer::FileSave(string _filename)
 {
@@ -376,6 +378,19 @@ void Importer::FileOpen(string _filename)
 		bin.read((char*)&uniqueIndicies[0], size3 * sizeof(UINT));
 
 		bin.close();
+	}
+}
+
+void Importer::Animate()
+{
+	unsigned int numFrames = (unsigned int)mAnimation.duration;
+
+	for (unsigned int frame = 0; frame < numFrames; frame++)
+	{
+		for (unsigned int jointIndex = 0; jointIndex < skeleton.joints.size(); jointIndex++)
+		{
+			skeleton.joints[jointIndex].animation[frame].globalTransform;
+		}
 	}
 }
 

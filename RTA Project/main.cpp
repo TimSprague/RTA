@@ -67,6 +67,9 @@ class RTA_PROJECT
 	UINT pointCount = 36;
 	LINE pointLines[36];
 
+	int frame = 0;
+	double timeCheck = 0;
+
 
 public:
 
@@ -76,6 +79,7 @@ public:
 	void Camera_Movement();
 	void Sun();
 	DirectX::XMMATRIX ConvertFBX_DX11(FbxAMatrix _m);
+	void ANIMATE(int _frame);
 
 };
 
@@ -208,20 +212,20 @@ RTA_PROJECT::RTA_PROJECT(HINSTANCE hinst, WNDPROC proc)
 		2,7,6,
 	};
 
-	UINT jointsCount = import.skeleton.joints.size();
-	for (int i = 0; i < jointsCount; i++)
-	{
-			
-			if (!import.skeleton.joints[i].animation)
-			{
-				clones[i] = DirectX::XMMatrixIdentity();
-				continue;
-			}
-			temp1 = ConvertFBX_DX11(import.skeleton.joints[i].animation->globalTransform);
-			pointLines[i].pos.m128_f32[0] = temp1.r[3].m128_f32[0];
-			pointLines[i].pos.m128_f32[1] = temp1.r[3].m128_f32[1];
-			pointLines[i].pos.m128_f32[2] = temp1.r[3].m128_f32[2];	
-	}
+	//UINT jointsCount = import.skeleton.joints.size();
+	//for (int i = 0; i < jointsCount; i++)
+	//{
+	//		
+	//		if (!import.skeleton.joints[i].animation)
+	//		{
+	//			clones[i] = DirectX::XMMatrixIdentity();
+	//			continue;
+	//		}
+	//		temp1 = ConvertFBX_DX11(import.skeleton.joints[i].animation->globalTransform);
+	//		pointLines[i].pos.m128_f32[0] = temp1.r[3].m128_f32[0];
+	//		pointLines[i].pos.m128_f32[1] = temp1.r[3].m128_f32[1];
+	//		pointLines[i].pos.m128_f32[2] = temp1.r[3].m128_f32[2];	
+	//}
 	
 #pragma endregion
 
@@ -442,31 +446,31 @@ RTA_PROJECT::RTA_PROJECT(HINSTANCE hinst, WNDPROC proc)
 
 	model.worldMatrix = DirectX::XMMatrixTranslation(0.0f, 0.0f, 75.0f);
 
-	for (UINT i = 0; i < jointsCount; i++)
-	{
-		if (!import.skeleton.joints[i].animation)
-		{
-			clones[i] = DirectX::XMMatrixIdentity();
-			continue;
-		}
-		clones[i] = ConvertFBX_DX11(import.skeleton.joints[i].animation->globalTransform);
-		temp = clones[i];
-		clones[i] = cube.worldMatrix = DirectX::XMMatrixTranslation(temp.r[3].m128_f32[0], temp.r[3].m128_f32[1], temp.r[3].m128_f32[2]);
-	}
+	//for (UINT i = 0; i < jointsCount; i++)
+	//{
+	//	if (!import.skeleton.joints[i].animation)
+	//	{
+	//		clones[i] = DirectX::XMMatrixIdentity();
+	//		continue;
+	//	}
+	//	clones[i] = ConvertFBX_DX11(import.skeleton.joints[i].animation->globalTransform);
+	//	temp = clones[i];
+	//	clones[i] = cube.worldMatrix = DirectX::XMMatrixTranslation(temp.r[3].m128_f32[0], temp.r[3].m128_f32[1], temp.r[3].m128_f32[2]);
+	//}
 
 #pragma region Lines
 
-	for (UINT k = 0; k < jointsCount; k++)
-	{
-		if (!import.skeleton.joints[k].animation)
-		{
-			lines[k] = DirectX::XMMatrixIdentity();
-			continue;
-		}
-		lines[k] = ConvertFBX_DX11(import.skeleton.joints[k].animation->globalTransform);
-		temp = lines[k];
-		lines[k] = line.worldMatrix = DirectX::XMMatrixTranslation(temp.r[3].m128_f32[0], temp.r[3].m128_f32[1], temp.r[3].m128_f32[2]);
-	}
+	//for (UINT k = 0; k < jointsCount; k++)
+	//{
+	//	if (!import.skeleton.joints[k].animation)
+	//	{
+	//		lines[k] = DirectX::XMMatrixIdentity();
+	//		continue;
+	//	}
+	//	lines[k] = ConvertFBX_DX11(import.skeleton.joints[k].animation->globalTransform);
+	//	temp = lines[k];
+	//	lines[k] = line.worldMatrix = DirectX::XMMatrixTranslation(temp.r[3].m128_f32[0], temp.r[3].m128_f32[1], temp.r[3].m128_f32[2]);
+	//}
 
 #pragma endregion
 
@@ -491,12 +495,41 @@ RTA_PROJECT::RTA_PROJECT(HINSTANCE hinst, WNDPROC proc)
 
 }
 
+void RTA_PROJECT::ANIMATE(int _frame)
+{
+
+		for (unsigned int jointIndex = 0; jointIndex < import.skeleton.joints.size(); jointIndex++)
+		{
+			// 5 30 35
+			if (jointIndex == 5 || jointIndex == 30 || jointIndex == 35 || jointIndex == 20)
+			{
+				continue;
+			}
+			import.skeleton.joints[jointIndex].animation[_frame].globalTransform;
+			clones[jointIndex] = ConvertFBX_DX11(import.skeleton.joints[jointIndex].animation[_frame].globalTransform);
+			temp = clones[jointIndex];
+			clones[jointIndex] = cube.worldMatrix = DirectX::XMMatrixTranslation(temp.r[3].m128_f32[0], temp.r[3].m128_f32[1], temp.r[3].m128_f32[2]);
+		}
+
+}
+
 bool RTA_PROJECT::Run()
 {
+	if (frame >= 60)
+	{
+		frame = 1;
+	}
 	timer.Signal();
+	timeCheck += timer.SmoothDelta();
 
 	Camera_Movement();
 	Sun();
+
+	if (timeCheck >= (20.f/60.f) )
+	{
+		timeCheck = 0;
+	ANIMATE(frame);
+	}
 	//GetCursorPos(&currPos);
 
 	//interpolate.Process(&import.mAnimation);
@@ -591,6 +624,8 @@ bool RTA_PROJECT::Run()
 
 #pragma endregion
 	swapchain->Present(0, 0);
+
+	frame++;
 
 	return true;
 }
@@ -809,25 +844,28 @@ DirectX::XMMATRIX RTA_PROJECT::ConvertFBX_DX11(FbxAMatrix _m)
 {
 	DirectX::XMMATRIX temp;
 	
-	temp.r[0].m128_f32[0] = (float)_m[0].mData[0];
-	temp.r[0].m128_f32[1] = (float)_m[0].mData[1];
-	temp.r[0].m128_f32[2] = (float)_m[0].mData[2];
-	temp.r[0].m128_f32[3] = (float)_m[0].mData[3];
+	temp.r[0].m128_f32[0] = _m[0].mData[0];
+	temp.r[0].m128_f32[1] = _m[0].mData[1];
+	temp.r[0].m128_f32[2] = _m[0].mData[2];
+	temp.r[0].m128_f32[3] = _m[0].mData[3];
 
-	temp.r[1].m128_f32[0] = (float)_m[1].mData[0];
-	temp.r[1].m128_f32[1] = (float)_m[1].mData[1];
-	temp.r[1].m128_f32[2] = (float)_m[1].mData[2];
-	temp.r[1].m128_f32[3] = (float)_m[1].mData[3];
+	temp.r[1].m128_f32[0] = _m[1].mData[0];
+	temp.r[1].m128_f32[1] = _m[1].mData[1];
+	temp.r[1].m128_f32[2] = _m[1].mData[2];
+	temp.r[1].m128_f32[3] = _m[1].mData[3];
 
-	temp.r[2].m128_f32[0] = (float)_m[2].mData[0];
-	temp.r[2].m128_f32[1] = (float)_m[2].mData[1];
-	temp.r[2].m128_f32[2] = (float)_m[2].mData[2];
-	temp.r[2].m128_f32[3] = (float)_m[2].mData[3];
+	temp.r[2].m128_f32[0] = _m[2].mData[0];
+	temp.r[2].m128_f32[1] = _m[2].mData[1];
+	temp.r[2].m128_f32[2] = _m[2].mData[2];
+	temp.r[2].m128_f32[3] = _m[2].mData[3];
 
-	temp.r[3].m128_f32[0] = (float)_m[3].mData[0];
-	temp.r[3].m128_f32[1] = (float)_m[3].mData[1];
-	temp.r[3].m128_f32[2] = (float)_m[3].mData[2];
-	temp.r[3].m128_f32[3] = (float)_m[3].mData[3];
+	temp.r[3].m128_f32[0] = _m[3].mData[0];
+	temp.r[3].m128_f32[1] = _m[3].mData[1];
+	temp.r[3].m128_f32[2] = _m[3].mData[2];
+	temp.r[3].m128_f32[3] = _m[3].mData[3];
+
+
+	int size = sizeof(double);
 
 	return temp;
 
