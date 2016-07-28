@@ -42,6 +42,11 @@ struct LINE
 	DirectX::XMVECTOR rgba;
 };
 
+struct SKYBOX
+{
+	DirectX::XMVECTOR pos;
+};
+
 
 
 

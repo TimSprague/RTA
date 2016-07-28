@@ -31,6 +31,8 @@
 #include "Lines_PS.csh"
 #include "Instance_VS.csh"
 #include "Instance_lines_VS.csh"
+#include "Skybox_VS.csh"
+#include "Skybox_PS.csh"
 
 
 #define _CRTDBG_MAP_ALLOC
